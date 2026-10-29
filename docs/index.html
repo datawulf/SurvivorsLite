@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SurvivorsLite - a fast HUD for Azeroth Survivors</title>
+<meta name="description" content="SurvivorsLite is a small, fast HUD addon for Azeroth Survivors: boss and guardian bars, guardian lairs on the minimap, leash range, skill range circles and more.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Survivors<span>Lite</span></a>
+    <nav>
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="guide.html">Guide</a>
+      <a href="status.html">Feature status</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="https://github.com/datawulf/SurvivorsLite">GitHub</a>
+    </nav>
+    <a class="kofi" href="https://ko-fi.com/munkrej">Support on Ko-fi</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>A small, fast HUD for Azeroth Survivors</h1>
+    <p class="lead">SurvivorsLite shows what matters in a run: your health and buffs under your
+    character, boss and guardian bars, where the guardians' lairs are and when they come
+    back, how far a guardian will chase you and how far your skills reach. It is a light
+    replacement for SurvivorsDragonUi and does no per-frame work.</p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/datawulf/SurvivorsLite/releases/latest">Download the latest release</a>
+      <a class="button" href="guide.html#install">How to install</a>
+      <a class="button" href="status.html">What is confirmed in game</a>
+    </div>
+    <p class="note">Version 1.7.1. Tested against the game's addon API of web build
+    <code>d2233962924f</code> (2026-10-29).</p>
+  </section>
+
+  <h2>What it shows</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Hero bar <span class="tag ok">seen in game</span></h3>
+      <p>Level, health, experience and lives under your character. Buffs and debuffs with
+      time left, stacks and how much of the run each buff was up.</p>
+    </div>
+    <div class="card">
+      <h3>Shield <span class="tag wait">not confirmed</span></h3>
+      <p>Your absorb shield as a pale segment on the health bar and its amount after your
+      health, for example "300 +400".</p>
+    </div>
+    <div class="card">
+      <h3>Boss and guardian bars <span class="tag ok">seen in game</span></h3>
+      <p>Bars with health in percent and as a number, "ENRAGED" and your debuffs on them.
+      Plain enemies get only a thin health bar.</p>
+    </div>
+    <div class="card">
+      <h3>Status list <span class="tag ok">seen in game</span></h3>
+      <p>One line per boss and guardian: health, asleep or awake, when a lair comes back
+      and how far it is. The next boss and its countdown.</p>
+    </div>
+    <div class="card">
+      <h3>Guardian lairs on the minimap <span class="tag wait">not confirmed</span></h3>
+      <p>Each guardian has its own mark on its pin, its line and its bar. The lair that
+      comes back first glows and counts down. Chests are pinned too.</p>
+    </div>
+    <div class="card">
+      <h3>Reset range (leash) <span class="tag wait">not confirmed</span></h3>
+      <p>While a guardian chases you a bar shows how far you led it from its lair against
+      how far it follows. The real distance is learned in play.</p>
+    </div>
+    <div class="card">
+      <h3>Skill and range circles <span class="tag ok">seen in game</span></h3>
+      <p>A circle at your range, your pickup radius or any skill's reach, read from the
+      skill's tooltip so it grows with the skill.</p>
+    </div>
+    <div class="card">
+      <h3>Circles on the ground <span class="tag wait">not confirmed</span></h3>
+      <p>When the client gives the camera's distance and angle the circles lie on the
+      ground in perspective. Otherwise they stay flat on the screen.</p>
+    </div>
+    <div class="card">
+      <h3>Floating action bar <span class="tag wait">not confirmed</span></h3>
+      <p>A compact bar made of the game's own buttons with cooldown seconds and the
+      talents' clocks over it.</p>
+    </div>
+    <div class="card">
+      <h3>Party <span class="tag wait">not confirmed</span></h3>
+      <p>Party frames with health, level, damage per second and revive progress. Party
+      members get a class colored plate with an arrow.</p>
+    </div>
+    <div class="card">
+      <h3>Warnings <span class="tag wait">not confirmed</span></h3>
+      <p>The last 10 seconds before a boss comes, "Name is down!" when a party member falls
+      and a red screen edge at low health.</p>
+    </div>
+    <div class="card">
+      <h3>Options window</h3>
+      <p>Every setting changes live. Open it with <code>/slite</code>, the gear on the
+      minimap, the gear on the action bar or the game menu.</p>
+    </div>
+  </div>
+  <p class="note">"Seen in game" means a player screenshot or report showed it working.
+  Everything else passes the test harness but waits for a check in the real game. See
+  <a href="status.html">Feature status</a>.</p>
+
+  <h2>Install in a minute</h2>
+  <ol>
+    <li>Download <code>SurvivorsLite-1.7.1.zip</code> from the
+    <a href="https://github.com/datawulf/SurvivorsLite/releases/latest">latest release</a>.</li>
+    <li>In the browser game open Options, AddOns, Install and pick the zip.</li>
+    <li>Remove SurvivorsDragonUi on the same page so the two do not both run.</li>
+    <li>Start a run and type <code>/slite</code> to open the options.</li>
+  </ol>
+  <p>The Windows build and more are in the <a href="guide.html#install">guide</a>.</p>
+
+  <h2>Why it is fast</h2>
+  <ul>
+    <li>No per-frame work. A few tickers run 1 to 10 times a second and sleep when there is
+    nothing to count down.</li>
+    <li>Plain enemies' thin bars are the game's own health bar made small, so they run no
+    addon code. Only the few marked plates listen to their health.</li>
+    <li>The run's addon lines only set flags. Rebuilds run at most 3 to 5 times a second
+    and text is only set when it changes.</li>
+    <li>In the test harness with 300 plates it uses about 3.5 ms of Lua per second.
+    <code>/slite perf</code> measures it in your game.</li>
+  </ul>
+
+  <h2>Support</h2>
+  <p>SurvivorsLite is free and open source. If it helps your runs, you can
+  <a href="https://ko-fi.com/munkrej">buy me a coffee on Ko-fi</a>. Bugs and ideas are
+  welcome in the <a href="https://github.com/datawulf/SurvivorsLite/issues">issues</a>.</p>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>SurvivorsLite is fan made and not affiliated with the makers of Azeroth Survivors or
+    with Blizzard Entertainment. MIT licensed.</p>
+    <p><a href="https://github.com/datawulf/SurvivorsLite">Source on GitHub</a> -
+    <a href="https://ko-fi.com/munkrej">Ko-fi</a></p>
+  </div>
+</footer>
+</body>
+</html>

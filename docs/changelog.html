@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog - SurvivorsLite</title>
+<meta name="description" content="Every SurvivorsLite release and what it changed.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Survivors<span>Lite</span></a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="guide.html">Guide</a>
+      <a href="status.html">Feature status</a>
+      <a href="changelog.html" aria-current="page">Changelog</a>
+      <a href="https://github.com/datawulf/SurvivorsLite">GitHub</a>
+    </nav>
+    <a class="kofi" href="https://ko-fi.com/munkrej">Support on Ko-fi</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Changelog</h1>
+  <p class="lead">Every release passed the test harness. What has been seen in the real game
+  is on the <a href="status.html">feature status</a> page. Downloads are on
+  <a href="https://github.com/datawulf/SurvivorsLite/releases">GitHub Releases</a>.</p>
+
+  <h2 id="v1.7.1">1.7.1 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Stops the error window in Alterac Valley: "QuestTimerFrame:SetPoint(): Couldn't find
+    region named 'MinimapCluster'". The error comes from the game's own layout pass.
+    SurvivorsLite catches only that error and still places the chat dock and bags that the
+    failed pass skipped.</li>
+    <li>Checked against the new web build <code>d2233962924f</code>: the addon API is
+    unchanged.</li>
+  </ul>
+
+  <h2 id="v1.7.0">1.7.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Each guardian's lair gets a mark of its own (star, circle, diamond, triangle, moon,
+    square) on its minimap pin, its status line and its guardian's plate.</li>
+    <li>The lair that comes back first gets a bigger pin with a gold glow and a countdown and
+    a gold "next 0:45  86 yd" status line.</li>
+    <li>Lines of sleeping guardians show how far away they are.</li>
+  </ul>
+
+  <h2 id="v1.6.0">1.6.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Your absorb shield on the hero health bar: a pale blue segment, a bright tick when
+    health and shield pass your maximum and the amount after your health.</li>
+  </ul>
+
+  <h2 id="v1.5.0">1.5.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Leash bar over your character while a guardian chases you, green to red, with a
+    "gives up soon" warning.</li>
+    <li>The leash grows while a guardian keeps chasing you farther out and is set where a
+    guardian gives up and goes back to sleep.</li>
+  </ul>
+
+  <h2 id="v1.4.0">1.4.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Circles on the ground from the camera's distance and angle read through saved view 5,
+    with a Field of view setting and <code>/slite camera</code>. Flat circles when the
+    client gives no live values.</li>
+    <li>Skill circles use exactly the yards in each skill's own tooltip.</li>
+    <li>Removed the plate shrinking trick. It does not stop plates jumping in this client.</li>
+  </ul>
+
+  <h2 id="v1.3.0">1.3.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Skill circles at each skill's reach, read from its tooltip, with
+    <code>/slite skills</code> and <code>/slite skill &lt;name&gt;</code>.</li>
+  </ul>
+
+  <h2 id="v1.2.0">1.2.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Gear buttons on the minimap and the action bar open the options.</li>
+    <li>Thin health bars for plain enemies. Smaller boss and guardian bars with your debuffs
+    and absolute health.</li>
+    <li>Same-named units are matched by health. Elites are only marked with "Mark elites".</li>
+    <li>Smaller hero bar and buff uptime.</li>
+    <li>Compact floating action bar with cooldown seconds and talent clocks.</li>
+    <li>Status list with one line per boss and guardian and the next boss.</li>
+    <li>Minimap pins for lairs and chests, leash rings and leash distances.</li>
+  </ul>
+
+  <h2 id="v1.1.0">1.1.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>Options window via <code>/slite</code> and the game menu.</li>
+    <li>Range circle, second circle and pickup circle with one size calibration.</li>
+  </ul>
+
+  <h2 id="v1.0.0">1.0.0 <span class="note">2026-10-29</span></h2>
+  <ul>
+    <li>First release: hero bar with cooldowns, buffs and debuffs; boss, guardian and elite
+    plates; party plates and frames; boss countdown, ally down warning and low health
+    edge.</li>
+  </ul>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>SurvivorsLite is fan made and not affiliated with the makers of Azeroth Survivors or
+    with Blizzard Entertainment. MIT licensed.</p>
+    <p><a href="https://github.com/datawulf/SurvivorsLite">Source on GitHub</a> -
+    <a href="https://ko-fi.com/munkrej">Ko-fi</a></p>
+  </div>
+</footer>
+</body>
+</html>

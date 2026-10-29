@@ -1,0 +1,8 @@
+# Build output: release zips go to GitHub Releases.
+dist/
+
+# The game's own addon API, extracted locally by tools/fetch_api.py.
+tests/azs_api.lua
+
+__pycache__/
+*.pyc

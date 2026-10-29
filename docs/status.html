@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature status - SurvivorsLite</title>
+<meta name="description" content="Which SurvivorsLite features have been seen working in Azeroth Survivors and which still wait for a check in the real game.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Survivors<span>Lite</span></a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="guide.html">Guide</a>
+      <a href="status.html" aria-current="page">Feature status</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="https://github.com/datawulf/SurvivorsLite">GitHub</a>
+    </nav>
+    <a class="kofi" href="https://ko-fi.com/munkrej">Support on Ko-fi</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Feature status</h1>
+  <p class="lead">Every feature passes the test harness, which runs the addon against the
+  game's own addon API in a strict mock of the 1.12 client. Not every one has been seen in
+  the real game yet. This page says which.</p>
+  <p>Tried one of the unconfirmed ones? Tell how it went with a
+  <a href="https://github.com/datawulf/SurvivorsLite/issues/new?template=feature_check.md">feature
+  check</a>. A screenshot helps most.</p>
+  <p class="note">Status as of version 1.7.1 (2026-10-29).</p>
+
+  <h2><span class="tag ok">seen in game</span> Confirmed by player screenshots and reports</h2>
+  <ul class="status ok">
+    <li><strong>Hero bar</strong><span>Level, health and the experience line under your
+    character (1.0, smaller since 1.2).</span></li>
+    <li><strong>Buffs, debuffs and buff uptime</strong><span>Icons with time left and the
+    uptime percent under timed buffs (1.2).</span></li>
+    <li><strong>Class colored ring</strong><span>Marks where you stand under tree tops (1.0).</span></li>
+    <li><strong>Boss and guardian plates</strong><span>Bars with health for the final boss,
+    bosses and guardians (1.0).</span></li>
+    <li><strong>Thin bars for plain enemies</strong><span>Shown since 1.2. They still jump
+    apart in crowds, see below.</span></li>
+    <li><strong>Boss status list</strong><span>One line per boss and guardian (1.0, one line
+    each since 1.2).</span></li>
+    <li><strong>Range and skill circles, flat</strong><span>The range circle (1.1) and skill
+    circles at each skill's reach (1.3), drawn flat on the screen.</span></li>
+  </ul>
+
+  <h2><span class="tag wait">not confirmed</span> Built and tested, waiting for a check in game</h2>
+  <ul class="status wait">
+    <li><strong>Reset range (leash) of the guardians</strong><span>The leash bar over you
+    while a guardian chases you, learning the real distance from play, leash rings on the
+    minimap and the "20/40 yd" lines in the status list (1.2, 1.5). Distances need your
+    map position, so they do not show without a zone map.</span></li>
+    <li><strong>Circles on the ground</strong><span>Reads the camera through saved view 5
+    (1.4). Whether this client writes live values there is unknown; if not, the circles
+    stay flat and <code>/slite camera</code> says "Waiting for the camera".</span></li>
+    <li><strong>Exact skill yards per skill</strong><span>Since 1.4 each skill circle uses the
+    yards in its own tooltip, so Area only grows the skills it applies to.</span></li>
+    <li><strong>Minimap pins for lairs and chests</strong><span>They assume 1.12's minimap
+    scale (1.2).</span></li>
+    <li><strong>Guardian marks and the next respawn</strong><span>One mark per lair on its
+    pin, line and plate; the lair that comes back first glows and counts down (1.7).</span></li>
+    <li><strong>Shield on the health bar</strong><span>From the shield the run reports next to
+    your health (1.6).</span></li>
+    <li><strong>Floating action bar</strong><span>With cooldown seconds and the talents'
+    clocks (1.2).</span></li>
+    <li><strong>Gear buttons</strong><span>On the minimap and the action bar to open the
+    options (1.2).</span></li>
+    <li><strong>Debuffs and absolute health on boss bars</strong><span>Your debuffs with
+    stacks and time left under the bar (1.2).</span></li>
+    <li><strong>Matching same-named units by health</strong><span>So an elite pack mob named
+    like a guardian is not marked (1.2).</span></li>
+    <li><strong>Party frames and party plates</strong><span>Health, level, damage per second
+    and revive progress; class colored plates with an arrow (1.0).</span></li>
+    <li><strong>Warnings</strong><span>Boss countdown, "Name is down!" and the low health
+    screen edge (1.0).</span></li>
+    <li><strong>Alterac Valley error fix</strong><span>Catches the game's
+    "Couldn't find region named 'MinimapCluster'" error (1.7.1).</span></li>
+  </ul>
+
+  <h2><span class="tag no">not possible</span> Tried and out of an addon's reach</h2>
+  <ul class="status no">
+    <li><strong>See-through trees</strong><span>The client gives addons no access to the 3D
+    scene. The ring and circles are drawn above the world instead.</span></li>
+    <li><strong>Overlapping name plates</strong><span>The client places plates with a solver
+    of its own and ignores their size; shrinking them (1.2) did not help and was removed in
+    1.4. Hiding plain enemies (<code>/slite mobs hide</code>) keeps crowds calm.</span></li>
+    <li><strong>Bosses on the minimap</strong><span>The game sends positions for lairs and
+    chests but not for bosses.</span></li>
+  </ul>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>SurvivorsLite is fan made and not affiliated with the makers of Azeroth Survivors or
+    with Blizzard Entertainment. MIT licensed.</p>
+    <p><a href="https://github.com/datawulf/SurvivorsLite">Source on GitHub</a> -
+    <a href="https://ko-fi.com/munkrej">Ko-fi</a></p>
+  </div>
+</footer>
+</body>
+</html>

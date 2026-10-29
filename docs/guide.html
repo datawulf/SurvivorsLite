@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide - SurvivorsLite</title>
+<meta name="description" content="Install SurvivorsLite, open its options, set up range and skill circles, read the guardians' leash and use every command.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Survivors<span>Lite</span></a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="guide.html" aria-current="page">Guide</a>
+      <a href="status.html">Feature status</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="https://github.com/datawulf/SurvivorsLite">GitHub</a>
+    </nav>
+    <a class="kofi" href="https://ko-fi.com/munkrej">Support on Ko-fi</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Guide</h1>
+  <p class="lead">Install, options, circles, the guardians' lairs and leash, and every command.</p>
+  <p>On this page: <a href="#install">Install</a> - <a href="#options">Options</a> -
+  <a href="#plates">Plates and the status list</a> - <a href="#lairs">Lairs and marks</a> -
+  <a href="#leash">Reset range (leash)</a> - <a href="#circles">Circles</a> -
+  <a href="#ground">Circles on the ground</a> - <a href="#flat">Flat circles</a> -
+  <a href="#commands">Commands</a> - <a href="#limits">Limits</a> -
+  <a href="#problems">Problems</a></p>
+
+  <h2 id="install">Install</h2>
+  <p>Download <code>SurvivorsLite-&lt;version&gt;.zip</code> from the
+  <a href="https://github.com/datawulf/SurvivorsLite/releases/latest">latest release</a>. The
+  zip holds one folder named <code>SurvivorsLite</code>, which is what the game's installer
+  wants. GitHub's "Download ZIP" of the source code does not install.</p>
+  <h3>Browser game</h3>
+  <ol>
+    <li>Open Options, AddOns, Install and pick the zip.</li>
+    <li>Remove SurvivorsDragonUi on the same page so the two do not both run.</li>
+    <li>The addon loads on your next run. A login line in chat says how to open the options.</li>
+  </ol>
+  <p>A new version installs over the old one and keeps your settings.</p>
+  <h3>Windows build</h3>
+  <p>Unzip so the game's AddOns folder holds <code>SurvivorsLite\</code> with
+  <code>SurvivorsLite.toc</code> inside.</p>
+
+  <h2 id="options">Options</h2>
+  <p>Any of these opens the options window:</p>
+  <ul>
+    <li><code>/slite</code> or <code>/sl</code></li>
+    <li>the gear on the minimap's edge</li>
+    <li>the gear at the end of the floating action bar</li>
+    <li>the SurvivorsLite button in the game menu (Esc)</li>
+  </ul>
+  <p>Every setting changes live and has a tooltip. Esc closes the window. "Move frames" lets
+  you drag the hero bar, action bar, party frames, status list and the circles' center.
+  Reset asks for a second click.</p>
+
+  <h2 id="plates">Plates and the status list</h2>
+  <ul>
+    <li>Final boss: magenta skull. Bosses: orange skull and "ENRAGED" when they enrage.
+    Guardians: their lair's mark, dimmed while asleep.</li>
+    <li>Bars show health in percent and as a number and your debuffs with stacks and time
+    left.</li>
+    <li>Where several units share a name (an elite pack mob named like a guardian) a plate
+    is matched by health, so only the real one is marked. Elites can be marked too
+    (off by default).</li>
+    <li>Plain enemies: a thin health bar (default), no plate (<code>/slite mobs hide</code>)
+    or the game's plate (<code>/slite mobs show</code>).</li>
+  </ul>
+  <p>The status list has one short line per boss and guardian. Lines whose unit has its
+  plate up near you are bright.</p>
+  <div class="table"><table>
+    <tr><th>Line</th><th>Means</th></tr>
+    <tr><td><code>ENRAGED 40%</code></td><td>a boss and its health</td></tr>
+    <tr><td><code>asleep 90%  120 yd</code></td><td>a guardian in its lair and how far it is</td></tr>
+    <tr><td><code>80%  20/40 yd?</code></td><td>an awake guardian: how far you are from its lair against its leash, green, orange then red</td></tr>
+    <tr><td><code>next 0:45  86 yd</code></td><td>gold: the lair that comes back first, when and how far</td></tr>
+    <tr><td><code>back in 1:10</code></td><td>grey: a lair refilling later</td></tr>
+    <tr><td><code>in 2:30</code></td><td>the next boss and when it comes</td></tr>
+  </table></div>
+
+  <h2 id="lairs">Lairs and marks</h2>
+  <p>Every guardian's lair has a mark of its own (star, circle, diamond, triangle, moon,
+  square) by its place in the run's lair line. The same mark is on its minimap pin, its
+  status line and its guardian's plate, so "the triangle one" is easy to find.</p>
+  <ul>
+    <li>Minimap pins: grey while the lair refills and a red "!" while its guardian is awake.
+    A pin off the minimap sits on the edge and points the way.</li>
+    <li>The lair that comes back first is bigger, glows gold and counts down under its pin.
+    Its tooltip says when and how far, for example "Back in 0:45, 86 yd away. Comes back
+    first."</li>
+    <li>Chests are pinned as well. Bosses are not: the game sends no position for them.</li>
+  </ul>
+
+  <h2 id="leash">Reset range (leash)</h2>
+  <p>The leash is how far from its lair you can lead a guardian before it gives up and goes
+  home. The game does not tell addons, so it starts at the setting (40 yd) with a "?"
+  after it and is learned in play, both ways:</p>
+  <ul>
+    <li>While a guardian keeps chasing you, the farthest you stood from its lair counts as a
+    distance it holds at, once it is still awake two seconds later. The leash grows to
+    it.</li>
+    <li>When an awake guardian falls back asleep alive while you live, where you stood is
+    where it gave up. The addon says so in chat and the "?" goes away.</li>
+  </ul>
+  <p>While a guardian chases you a bar over your character shows it, for example
+  "Mother Fang  32 / 40 yd", green, orange then red, and "gives up soon" at about 85
+  percent. The minimap draws a ring at the leash around each held lair.</p>
+  <p>The distance is measured from you to the lair through your map position, so it needs
+  the run's lair line and a zone map. The Guardian leash slider or
+  <code>/slite leash 45</code> sets it by hand and forgets what play taught.</p>
+  <p class="note">Not confirmed in game yet. If the "?" never goes away after a guardian
+  resets on you, set the leash by hand and please
+  <a href="https://github.com/datawulf/SurvivorsLite/issues/new?template=feature_check.md">report it</a>.</p>
+
+  <h2 id="circles">Circles</h2>
+  <ul>
+    <li>Range circle: blue, 8 yd by default (<code>/slite range 8</code>). An optional orange
+    second circle (<code>/slite range2 30</code>). Both can grow with your Area stat.</li>
+    <li>Pickup circle: gold, at your pickup radius from the run's stats.</li>
+    <li>Skill circles: in the options under "Skill circles" every skill on your bar with a
+    reach is listed with its color and yards. Tick Eviscerate and Blade Flurry and each gets
+    its own circle. The reach comes from the skill's tooltip ("8 yd radius", "12 yd range",
+    "within 12 yd") exactly as the game writes it, so it grows with ranks, upgrades and,
+    for the skills it applies to, Area. Picks are remembered by skill name.</li>
+  </ul>
+  <p>The circles are drawn above the world, so trees do not cover them. While the options
+  are open or frames are unlocked each circle shows its radius.</p>
+
+  <h2 id="ground">Circles on the ground</h2>
+  <p>The client has no addon call for the camera, but 1.12's saved views carry it:
+  <code>SaveView(5)</code> writes the camera's distance and pitch into the
+  <code>cameraDistanceD</code> and <code>cameraPitchD</code> settings. The addon reads them
+  twice a second (ten times a second right after the camera moved) while a circle shows and
+  projects every circle onto flat ground around your feet. View 5's own values are put back
+  at logout.</p>
+  <ul>
+    <li>The options window shows what it reads under Camera, and <code>/slite camera</code>
+    says it in chat.</li>
+    <li>"Waiting for the camera" after you zoomed or turned the camera means this client does
+    not write live values into saved views. The circles then stay flat.</li>
+    <li>Match Field of view once: turn on Pickup radius and change Field of view until
+    experience starts flying to you as it touches the gold circle.</li>
+    <li>The ground is taken as flat at your feet, so circles drift on slopes and lag the
+    camera's smoothing by up to half a second.</li>
+  </ul>
+  <p class="note">Not confirmed in game yet.</p>
+
+  <h2 id="flat">Flat circles</h2>
+  <p>Without the live camera the circles are flat on the screen and need one calibration for
+  the zoom you play at:</p>
+  <ol>
+    <li>Zoom out the way you play and open <code>/slite</code>.</li>
+    <li>Turn on Pickup radius (it shows once a run sends your stats).</li>
+    <li>Change Size per yard until experience starts flying to you as it touches the gold
+    circle. The blue circle is then right too.</li>
+    <li>If your camera looks in from the side, lower Height until the circles lie flat.</li>
+    <li>Move frames, then drag the small "You" box onto your feet if the circles sit off
+    center. Lock frames when done.</li>
+  </ol>
+  <p>Zooming later makes flat circles wrong until you change Size per yard again.</p>
+
+  <h2 id="commands">Commands</h2>
+  <p><code>/slite help</code> lists every command with its current state.</p>
+  <div class="table"><table>
+    <tr><th>Command</th><th>Effect</th></tr>
+    <tr><td><code>/slite</code>, <code>/slite options</code></td><td>open or close the options window</td></tr>
+    <tr><td><code>/slite unlock</code>, <code>lock</code></td><td>drag the hero bar, action bar, party frames, status list and the circles' center</td></tr>
+    <tr><td><code>/slite hero on/off</code></td><td>hero bar with your health and auras</td></tr>
+    <tr><td><code>/slite shield on/off</code></td><td>your shield on the health bar</td></tr>
+    <tr><td><code>/slite uptime on/off</code></td><td>buff uptime under the aura icons</td></tr>
+    <tr><td><code>/slite buffs timed/all/off</code></td><td>which buffs to show</td></tr>
+    <tr><td><code>/slite ring on/off</code></td><td>ring around your character</td></tr>
+    <tr><td><code>/slite lowhp on/off</code></td><td>red screen edge at low health</td></tr>
+    <tr><td><code>/slite bar on/off</code></td><td>floating action bar (off puts the game's bar back)</td></tr>
+    <tr><td><code>/slite barscale 0.5-1.5</code></td><td>size of the floating action bar</td></tr>
+    <tr><td><code>/slite cds on/off</code></td><td>cooldown numbers and talent clocks</td></tr>
+    <tr><td><code>/slite plates on/off</code></td><td>boss and guardian plates</td></tr>
+    <tr><td><code>/slite mobs bars/hide/show</code></td><td>plain enemies: small bars, hidden or the game's plates</td></tr>
+    <tr><td><code>/slite elites on/off</code></td><td>mark elites too</td></tr>
+    <tr><td><code>/slite debuffs on/off</code></td><td>your debuffs on boss and guardian plates</td></tr>
+    <tr><td><code>/slite autoplates on/off</code></td><td>turn enemy plates on by itself</td></tr>
+    <tr><td><code>/slite allies on/off</code></td><td>party member plates</td></tr>
+    <tr><td><code>/slite party on/off</code></td><td>party frames</td></tr>
+    <tr><td><code>/slite threats on/off</code></td><td>boss status list</td></tr>
+    <tr><td><code>/slite lairs on/off</code>, <code>chests on/off</code></td><td>lairs and chests on the minimap</td></tr>
+    <tr><td><code>/slite leashring on/off</code></td><td>leash rings on the minimap</td></tr>
+    <tr><td><code>/slite leashbar on/off</code></td><td>the leash bar over your character</td></tr>
+    <tr><td><code>/slite leash 10-150</code></td><td>the guardians' leash radius in yards</td></tr>
+    <tr><td><code>/slite mapbutton on/off</code></td><td>the gear on the minimap</td></tr>
+    <tr><td><code>/slite alerts on/off</code></td><td>boss countdown and ally down warnings</td></tr>
+    <tr><td><code>/slite skills</code></td><td>your skills with a reach and their yards now</td></tr>
+    <tr><td><code>/slite skill &lt;name&gt;</code></td><td>a circle at that skill's reach on or off, for example <code>/slite skill blade flurry</code></td></tr>
+    <tr><td><code>/slite range 8</code>, <code>range on/off</code></td><td>range circle radius in yards (1-60) or on/off</td></tr>
+    <tr><td><code>/slite range2 30</code>, <code>range2 on/off</code></td><td>second range circle</td></tr>
+    <tr><td><code>/slite pickup on/off</code></td><td>circle at your pickup radius</td></tr>
+    <tr><td><code>/slite area on/off</code></td><td>grow the range circles with your Area stat</td></tr>
+    <tr><td><code>/slite ground on/off</code></td><td>circles on the ground from the live camera</td></tr>
+    <tr><td><code>/slite fov 30-100</code></td><td>the camera's field of view for ground circles</td></tr>
+    <tr><td><code>/slite camera</code></td><td>what the ground circles read from the camera</td></tr>
+    <tr><td><code>/slite zoom 5-60</code></td><td>flat circle size per yard</td></tr>
+    <tr><td><code>/slite tilt 0.3-1</code></td><td>flat circle height for a camera that looks in from the side</td></tr>
+    <tr><td><code>/slite scale 0.6-2</code></td><td>size of the hero bar, party frames and list</td></tr>
+    <tr><td><code>/slite perf</code></td><td>measures the addon's own Lua time for 10 seconds</td></tr>
+    <tr><td><code>/slite reset</code></td><td>default settings and positions</td></tr>
+  </table></div>
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>Trees still draw over the world. The client gives addons no access to the 3D scene;
+    the ring and circles are drawn above it instead.</li>
+    <li>Name plates jump apart in crowds. The client places them with a solver of its own and
+    an addon only sees where it put them. Hiding plain enemies
+    (<code>/slite mobs hide</code>) keeps crowds calm.</li>
+    <li>Ground circles assume flat ground and a camera that orbits a point 1.5 yd above your
+    feet.</li>
+    <li>Minimap pins assume 1.12's minimap scale and that the run's lair and chest
+    coordinates are those of your zone's map.</li>
+    <li>Skill circles need the skill's tooltip to name its reach in yards. A buff or a self
+    heal is not offered.</li>
+    <li>The leash is learned from the run's sleep state, so a guardian that falls asleep for
+    another reason teaches a wrong value. The slider replaces it.</li>
+  </ul>
+
+  <h2 id="problems">Problems</h2>
+  <h3>An error window in Alterac Valley</h3>
+  <p>"QuestTimerFrame:SetPoint(): Couldn't find region named 'MinimapCluster'" comes from the
+  game's own layout code, which cannot find the minimap frame by name there. Since 1.7.1
+  SurvivorsLite catches only that error and still places the chat dock and bags.</p>
+  <h3>A red "SurvivorsLite error" line in chat</h3>
+  <p>The addon caught one of its own errors and kept running. Please
+  <a href="https://github.com/datawulf/SurvivorsLite/issues/new?template=bug_report.md">open a
+  bug report</a> with the line and a screenshot.</p>
+  <h3>A skill is missing from the skill circles</h3>
+  <p>Its tooltip names its reach in a way the addon does not read yet. A screenshot of the
+  tooltip in a bug report lets it be added.</p>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>SurvivorsLite is fan made and not affiliated with the makers of Azeroth Survivors or
+    with Blizzard Entertainment. MIT licensed.</p>
+    <p><a href="https://github.com/datawulf/SurvivorsLite">Source on GitHub</a> -
+    <a href="https://ko-fi.com/munkrej">Ko-fi</a></p>
+  </div>
+</footer>
+</body>
+</html>

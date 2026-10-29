@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://datawulf.github.io/SurvivorsLite/
+    about: Install, options, circles, the leash and every command.
