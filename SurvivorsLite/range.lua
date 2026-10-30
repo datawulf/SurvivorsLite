@@ -233,11 +233,40 @@ local function ScanSkills()
     return out
 end
 
--- A skill's reach in the world now: its tooltip's yards as the client writes them, which
--- already hold whatever grows that skill (ranks, upgrades and, for the skills it applies
--- to, your Area stat). Not every skill grows with Area, so nothing is added on top.
+-- A skill's reach in the world now. The tooltip shows an area's base yards (with ranks and
+-- upgrades) and the run's Area stat grows the area on top, so a radius or cone circle takes
+-- Area; a targeting reach ("12 yd range", "within 30 yd") does not grow with it. A skill
+-- whose tooltip once moved with Area at the same rank holds Area already (db.tipArea).
+local AREA_KINDS = { radius = true, cone = true }
+
 function SL.SkillYards(skill)
+    local tip = SL.db.tipArea
+    if AREA_KINDS[skill.kind] and not (tip and tip[skill.name]) then
+        return skill.yards * AreaFactor()
+    end
     return skill.yards
+end
+
+-- Each skill's yards and the Area they were read at, to notice a tooltip that follows Area.
+local skillReads = {}
+
+local function LearnTipArea(found)
+    local area = RawArea()
+    for i = 1, table.getn(found) do
+        local s = found[i]
+        local prev = skillReads[s.name]
+        if prev and AREA_KINDS[s.kind] and math.abs(area - prev.area) > 0.02 and s.yards ~= prev.yards then
+            local expected = prev.yards * area / prev.area
+            if math.abs(s.yards - expected) <= expected * 0.05 then
+                SL.db.tipArea = SL.db.tipArea or {}
+                if not SL.db.tipArea[s.name] then
+                    SL.db.tipArea[s.name] = true
+                    SL.Say(s.name .. "'s tooltip already counts your Area; its circle uses it as shown.")
+                end
+            end
+        end
+        skillReads[s.name] = { yards = s.yards, area = area }
+    end
 end
 
 local function SkillCircle(i)
@@ -253,6 +282,7 @@ end
 local function Rescan()
     skillsDirty = false
     local found = ScanSkills()
+    LearnTipArea(found)
     local changed = table.getn(found) ~= table.getn(SL.skills)
     for i = 1, table.getn(found) do
         local a, b = found[i], SL.skills[i]

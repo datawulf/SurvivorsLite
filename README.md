@@ -2,7 +2,7 @@
 
 A small, fast HUD addon for [Azeroth Survivors](https://wow.aethus.pl), written as a light
 replacement for SurvivorsDragonUi. Tested against the client's addon API of web build
-`d2233962924f` (2026-10-29).
+`019734ed2f34` (2026-10-30).
 
 - Download: [latest release](https://github.com/datawulf/SurvivorsLite/releases/latest)
 - Documentation: [datawulf.github.io/SurvivorsLite](https://datawulf.github.io/SurvivorsLite/)
@@ -34,30 +34,35 @@ Entertainment.
   - Party members get a class colored plate with their level and a big arrow.
 - Party frames: class colored health, level, damage per second, DOWN or revive
   progress, faded when out of range. Click a row to target.
-- Every guardian's lair has a mark of its own (star, circle, diamond, triangle, moon,
-  square, by its place in the run's lair line). The same mark is on its minimap pin, its
-  line in the status list and its guardian's plate, so you can tell the guardians apart
-  at a glance.
+- Every guardian's lair has a look of its own, by its place in the run's lair line: a
+  dragon head in a color of its own (red, blue, green, bronze, purple). The same icon and
+  color are on its minimap pin, its line in the status list and its guardian's plate, so
+  you can tell the guardians apart at a glance.
 - Boss status list, one short line each: bosses alive with their health, every
   guardian's lair (asleep with how far it is, awake with how far you are from its lair
   against its leash, or when it comes back) and the next boss. The lair that comes back
   first says "next" in gold with its countdown and how far it is. Lines whose unit has
   its plate up near you are bright.
-- Minimap: every guardian's lair under its mark (grey while it refills, "!" while its
-  guardian is awake, kept on the edge when off the map), a ring at the leash radius
-  around each held lair, and the run's chests. The lair that comes back first is bigger,
+- Minimap: every guardian's lair under its dragon head with an edge in its color (dim
+  while it refills, "!" while its guardian is awake, kept on the edge when off the map), a
+  ring at the leash radius around each held lair, and the run's chests as small treasure
+  chests. The lair that comes back first is bigger,
   glows gold and counts down under its pin, so you can head there before it fills.
 - Leash bar over your character while a guardian chases you: how far you have led it from
   its lair against how far it will follow ("Mother Fang  32 / 40 yd"), green, orange, then
   red, with "gives up soon" before it turns back home.
 - A compact floating action bar made of the game's own buttons: the six spells, the
   racial and the character and talent buttons, with seconds left on each cooldown and
-  the talents' clocks (Cheat Death, heals, demon summons) over it.
+  the talents' clocks (Cheat Death, heals, demon summons) over it. Under it the jewelry
+  you picked this run (amulet, rings, trinkets) with its quality, its cooldown and its
+  tooltip under the mouse.
 - Skill circles: tick any of your run skills (Eviscerate, Blade Flurry...) and a circle in
   its own color shows its reach around you. The reach is read from the skill's own
-  tooltip ("8 yd radius", "12 yd range", "within 12 yd") exactly as the client writes it,
-  so it grows by itself with whatever grows that skill: ranks, upgrades and, for the
-  skills it applies to, your Area stat. Picks are remembered by skill name.
+  tooltip ("8 yd radius", "12 yd range", "within 12 yd"), so it follows ranks and upgrades
+  by itself. An area (a radius or a cone) also grows by your Area stat, which the tooltip
+  does not count; a targeting reach ("12 yd range", "within 30 yd") stays as shown. If a
+  skill's tooltip turns out to count Area already, the addon notices when Area changes and
+  uses that skill's yards as shown. Picks are remembered by skill name.
 - Range circles around your character: a blue one at a radius you pick (8 yd by
   default), an optional orange second one and an optional gold one at your pickup
   radius. The blue and orange circles can grow with your Area stat.
@@ -105,9 +110,9 @@ Not confirmed in game yet:
   leash rings on the minimap and leash distances in the status list.
 - Circles on the ground from the live camera. The client may not give live values to
   saved views; then the circles stay flat (`/slite camera` tells).
-- Skill circles taking each skill's yards exactly from its tooltip (the Area fix in 1.4.0).
+- Skill circles following each skill's tooltip yards (ranks and upgrades).
 - Minimap pins for lairs and chests.
-- Guardian marks and the next respawn pin and line.
+- Guardian looks and the next respawn pin and line.
 - The shield on the health bar.
 - The floating action bar with cooldown seconds and talent clocks.
 - The gear buttons on the minimap and the action bar.
@@ -116,6 +121,10 @@ Not confirmed in game yet:
 - Party frames and party member plates.
 - The boss countdown, the "Name is down!" warning and the low health screen edge.
 - The fix for the Alterac Valley error window (1.7.1).
+- The picked jewelry row under the action bar (1.8.0).
+- Area skills growing by your Area stat on top of their tooltip (1.8.0). If an area skill
+  still hits farther than its circle, the game may count the enemy's body size too.
+- The dragon head and chest icons on the minimap (1.8.0).
 
 Tried and not possible from an addon: see [Limits](#limits).
 
@@ -189,6 +198,7 @@ so it needs the run's lair line and a zone map. Moving the leash slider or
 | `/slite lowhp on/off` | red screen edge at low health |
 | `/slite bar on/off` | floating action bar (off puts the game's bar back) |
 | `/slite barscale 0.5-1.5` | size of the floating action bar |
+| `/slite jewelry on/off` | your picked jewelry under the action bar |
 | `/slite cds on/off` | cooldown numbers and talent clocks |
 | `/slite buffs timed/all/off` | which buffs to show |
 | `/slite plates on/off` | boss and guardian plates |
@@ -210,7 +220,7 @@ so it needs the run's lair line and a zone map. Moving the leash slider or
 | `/slite range 8` / `range on/off` | range circle radius in yards (1-60), or turn it on/off |
 | `/slite range2 30` / `range2 on/off` | second range circle |
 | `/slite pickup on/off` | circle at your pickup radius |
-| `/slite area on/off` | grow the range circles with your Area stat |
+| `/slite area on/off` | grow the range circles and area skill circles with your Area stat |
 | `/slite ground on/off` | circles on the ground from the live camera |
 | `/slite fov 30-100` | the camera's field of view for ground circles |
 | `/slite camera` | what the ground circles read from the camera |
@@ -250,7 +260,8 @@ second, 0.06 ms per frame. Use `/slite perf` in game for the real number.
 - Minimap pins assume 1.12's minimap scale (466.67 yd across at zoom 0, outdoors) and that
   the run's lair and chest map coordinates are those of your zone's map.
 - Skill circles need the skill's tooltip to name its reach in yards; a skill without
-  one (a buff, a self heal) is not offered.
+  one (a buff, a self heal) is not offered. Which skills Area grows is read from the kind
+  of reach the tooltip names, not from the game's own rules, which addons cannot see.
 - The leash is learned from the run's sleep state, so a guardian that falls asleep for
   another reason teaches a wrong value; the slider replaces it.
 - In Alterac Valley the game's own layout pass cannot find `MinimapCluster` and used to

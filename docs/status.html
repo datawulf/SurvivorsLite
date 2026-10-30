@@ -30,7 +30,7 @@
   <p>Tried one of the unconfirmed ones? Tell how it went with a
   <a href="https://github.com/datawulf/SurvivorsLite/issues/new?template=feature_check.md">feature
   check</a>. A screenshot helps most.</p>
-  <p class="note">Status as of version 1.7.1 (2026-10-29).</p>
+  <p class="note">Status as of version 1.8.0 (2026-10-30).</p>
 
   <h2><span class="tag ok">seen in game</span> Confirmed by player screenshots and reports</h2>
   <ul class="status ok">
@@ -58,12 +58,13 @@
     <li><strong>Circles on the ground</strong><span>Reads the camera through saved view 5
     (1.4). Whether this client writes live values there is unknown; if not, the circles
     stay flat and <code>/slite camera</code> says "Waiting for the camera".</span></li>
-    <li><strong>Exact skill yards per skill</strong><span>Since 1.4 each skill circle uses the
-    yards in its own tooltip, so Area only grows the skills it applies to.</span></li>
+    <li><strong>Skill circles following their tooltips</strong><span>A new rank or upgrade
+    that changes a skill's yards moves its circle by itself.</span></li>
     <li><strong>Minimap pins for lairs and chests</strong><span>They assume 1.12's minimap
     scale (1.2).</span></li>
-    <li><strong>Guardian marks and the next respawn</strong><span>One mark per lair on its
-    pin, line and plate; the lair that comes back first glows and counts down (1.7).</span></li>
+    <li><strong>Guardian looks and the next respawn</strong><span>One look per lair on its
+    pin, line and plate (raid marks in 1.7, dragon heads since 1.8); the lair that comes
+    back first glows and counts down.</span></li>
     <li><strong>Shield on the health bar</strong><span>From the shield the run reports next to
     your health (1.6).</span></li>
     <li><strong>Floating action bar</strong><span>With cooldown seconds and the talents'
@@ -78,6 +79,14 @@
     and revive progress; class colored plates with an arrow (1.0).</span></li>
     <li><strong>Warnings</strong><span>Boss countdown, "Name is down!" and the low health
     screen edge (1.0).</span></li>
+    <li><strong>Picked jewelry under the action bar</strong><span>The amulet, rings and
+    trinkets you picked, with quality, cooldowns and tooltips (1.8.0).</span></li>
+    <li><strong>Area skills grown by your Area stat</strong><span>Radius and cone circles take
+    Area on top of the tooltip's yards; targeting reach stays as shown (1.8.0). If an area
+    skill still hits farther than its circle, the game may also count the enemy's body
+    size.</span></li>
+    <li><strong>Dragon head and chest icons</strong><span>A dragon head in its own color for
+    each guardian's lair and a treasure chest for chests (1.8.0).</span></li>
     <li><strong>Alterac Valley error fix</strong><span>Catches the game's
     "Couldn't find region named 'MinimapCluster'" error (1.7.1).</span></li>
   </ul>

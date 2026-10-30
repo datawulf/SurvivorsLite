@@ -26,7 +26,7 @@
   <h1>Guide</h1>
   <p class="lead">Install, options, circles, the guardians' lairs and leash, and every command.</p>
   <p>On this page: <a href="#install">Install</a> - <a href="#options">Options</a> -
-  <a href="#plates">Plates and the status list</a> - <a href="#lairs">Lairs and marks</a> -
+  <a href="#jewelry">Picked jewelry</a> - <a href="#plates">Plates and the status list</a> - <a href="#lairs">Lairs and marks</a> -
   <a href="#leash">Reset range (leash)</a> - <a href="#circles">Circles</a> -
   <a href="#ground">Circles on the ground</a> - <a href="#flat">Flat circles</a> -
   <a href="#commands">Commands</a> - <a href="#limits">Limits</a> -
@@ -60,10 +60,17 @@
   you drag the hero bar, action bar, party frames, status list and the circles' center.
   Reset asks for a second click.</p>
 
+  <h2 id="jewelry">Picked jewelry</h2>
+  <p>Under the floating action bar sits the jewelry you picked this run: the amulet, the
+  two rings and the two trinkets, in that order, each with an edge in its quality color.
+  A piece on cooldown shades from the top and counts its seconds. Point at one for its
+  tooltip. With the floating bar off the row sits over the game's own bar.
+  <code>/slite jewelry off</code> or "Picked jewelry" in the options hides it.</p>
+
   <h2 id="plates">Plates and the status list</h2>
   <ul>
     <li>Final boss: magenta skull. Bosses: orange skull and "ENRAGED" when they enrage.
-    Guardians: their lair's mark, dimmed while asleep.</li>
+    Guardians: their lair's dragon head with an edge in its color, dimmed while asleep.</li>
     <li>Bars show health in percent and as a number and your debuffs with stacks and time
     left.</li>
     <li>Where several units share a name (an elite pack mob named like a guardian) a plate
@@ -85,16 +92,18 @@
   </table></div>
 
   <h2 id="lairs">Lairs and marks</h2>
-  <p>Every guardian's lair has a mark of its own (star, circle, diamond, triangle, moon,
-  square) by its place in the run's lair line. The same mark is on its minimap pin, its
-  status line and its guardian's plate, so "the triangle one" is easy to find.</p>
+  <p>Every guardian's lair has a look of its own by its place in the run's lair line: a
+  dragon head in a color of its own (red, blue, green, bronze, purple). The same icon and
+  color are on its minimap pin, its status line and its guardian's plate, so "the blue
+  one" is easy to find.</p>
   <ul>
     <li>Minimap pins: grey while the lair refills and a red "!" while its guardian is awake.
     A pin off the minimap sits on the edge and points the way.</li>
     <li>The lair that comes back first is bigger, glows gold and counts down under its pin.
     Its tooltip says when and how far, for example "Back in 0:45, 86 yd away. Comes back
     first."</li>
-    <li>Chests are pinned as well. Bosses are not: the game sends no position for them.</li>
+    <li>Chests show as small treasure chests. Bosses are not pinned: the game sends no
+    position for them.</li>
   </ul>
 
   <h2 id="leash">Reset range (leash)</h2>
@@ -126,8 +135,10 @@
     <li>Skill circles: in the options under "Skill circles" every skill on your bar with a
     reach is listed with its color and yards. Tick Eviscerate and Blade Flurry and each gets
     its own circle. The reach comes from the skill's tooltip ("8 yd radius", "12 yd range",
-    "within 12 yd") exactly as the game writes it, so it grows with ranks, upgrades and,
-    for the skills it applies to, Area. Picks are remembered by skill name.</li>
+    "within 12 yd"), so it follows ranks and upgrades. An area (a radius or a cone) also
+    grows by your Area stat, which the tooltip does not count; a targeting reach ("12 yd
+    range", "within 30 yd") stays as shown. A skill whose tooltip counts Area already is
+    noticed when Area changes and used as shown. Picks are remembered by skill name.</li>
   </ul>
   <p>The circles are drawn above the world, so trees do not cover them. While the options
   are open or frames are unlocked each circle shows its radius.</p>
@@ -179,6 +190,7 @@
     <tr><td><code>/slite lowhp on/off</code></td><td>red screen edge at low health</td></tr>
     <tr><td><code>/slite bar on/off</code></td><td>floating action bar (off puts the game's bar back)</td></tr>
     <tr><td><code>/slite barscale 0.5-1.5</code></td><td>size of the floating action bar</td></tr>
+    <tr><td><code>/slite jewelry on/off</code></td><td>your picked jewelry under the action bar</td></tr>
     <tr><td><code>/slite cds on/off</code></td><td>cooldown numbers and talent clocks</td></tr>
     <tr><td><code>/slite plates on/off</code></td><td>boss and guardian plates</td></tr>
     <tr><td><code>/slite mobs bars/hide/show</code></td><td>plain enemies: small bars, hidden or the game's plates</td></tr>
@@ -199,7 +211,7 @@
     <tr><td><code>/slite range 8</code>, <code>range on/off</code></td><td>range circle radius in yards (1-60) or on/off</td></tr>
     <tr><td><code>/slite range2 30</code>, <code>range2 on/off</code></td><td>second range circle</td></tr>
     <tr><td><code>/slite pickup on/off</code></td><td>circle at your pickup radius</td></tr>
-    <tr><td><code>/slite area on/off</code></td><td>grow the range circles with your Area stat</td></tr>
+    <tr><td><code>/slite area on/off</code></td><td>grow the range circles and area skill circles with your Area stat</td></tr>
     <tr><td><code>/slite ground on/off</code></td><td>circles on the ground from the live camera</td></tr>
     <tr><td><code>/slite fov 30-100</code></td><td>the camera's field of view for ground circles</td></tr>
     <tr><td><code>/slite camera</code></td><td>what the ground circles read from the camera</td></tr>
@@ -222,7 +234,8 @@
     <li>Minimap pins assume 1.12's minimap scale and that the run's lair and chest
     coordinates are those of your zone's map.</li>
     <li>Skill circles need the skill's tooltip to name its reach in yards. A buff or a self
-    heal is not offered.</li>
+    heal is not offered. Which skills Area grows is read from the kind of reach the
+    tooltip names; the game's own rule is not visible to addons.</li>
     <li>The leash is learned from the run's sleep state, so a guardian that falls asleep for
     another reason teaches a wrong value. The slider replaces it.</li>
   </ul>

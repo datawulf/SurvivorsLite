@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.7.1" }
+SurvivorsLite = { version = "1.8.0" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
@@ -16,7 +16,7 @@ SL.DEFAULTS = {
     centerX = 0, centerY = 0,
     range = true, rangeYd = 8, range2 = false, range2Yd = 30, pickup = false, area = true,
     rangeZoom = 23, rangeTilt = 1, ground = true, fov = 55,
-    bar = true, barScale = 0.85, barX = 0, barY = 8,
+    bar = true, barScale = 0.85, barX = 0, barY = 8, jewelry = true,
     lairs = true, chests = true, leashring = true, leashbar = true, leash = 40, mapbutton = true,
 }
 -- Saved settings older than this get the changed defaults below once.
@@ -35,9 +35,18 @@ SL.ICON = {
     moon = { 0, 0.25, 0.25, 0.5 }, square = { 0.25, 0.5, 0.25, 0.5 },
     cross = { 0.5, 0.75, 0.25, 0.5 }, skull = { 0.75, 1, 0.25, 0.5 },
 }
--- Each guardian's lair has a mark of its own, by its place in the run's lair line: the same
--- on its minimap pin, its status line and its guardian's plate. Skull stays the bosses'.
-SL.LAIR_MARKS = { "star", "circle", "diamond", "triangle", "moon", "square" }
+-- Each guardian's lair has a look of its own, by its place in the run's lair line: a dragon
+-- head in a color of its own, the same on its minimap pin, its status line and its
+-- guardian's plate. The skull stays the bosses'.
+local DRAGON = "Interface\\Icons\\INV_Misc_Head_Dragon_"
+SL.LAIR_LOOKS = {
+    { icon = DRAGON .. "Red", color = { 1, 0.35, 0.3 } },
+    { icon = DRAGON .. "Blue", color = { 0.35, 0.65, 1 } },
+    { icon = DRAGON .. "Green", color = { 0.35, 1, 0.45 } },
+    { icon = DRAGON .. "Bronze", color = { 1, 0.78, 0.25 } },
+    { icon = DRAGON .. "Black", color = { 0.75, 0.5, 1 } },
+}
+SL.CHEST_ICON = "Interface\\Icons\\INV_Box_01"
 
 SL.CLASS = {
     WARRIOR = { 0.78, 0.61, 0.43 }, MAGE = { 0.41, 0.80, 0.94 },
@@ -306,9 +315,24 @@ function SL.MinSec(s)
     return m .. ":" .. s
 end
 
-function SL.LairMark(lair)
+function SL.LairLook(lair)
     local i = tonumber(lair and lair.index) or 1
-    return SL.LAIR_MARKS[math.mod(math.max(i, 1) - 1, table.getn(SL.LAIR_MARKS)) + 1]
+    return SL.LAIR_LOOKS[math.mod(math.max(i, 1) - 1, table.getn(SL.LAIR_LOOKS)) + 1]
+end
+
+-- Puts a raid mark (by its name in SL.ICON) or a full icon (by path, its edge trimmed) on a
+-- texture, only when it changes.
+function SL.SetMark(tex, mark)
+    if tex.slMark == mark then return end
+    tex.slMark = mark
+    local c = SL.ICON[mark]
+    if c then
+        tex:SetTexture(SL.RAIDICONS)
+        tex:SetTexCoord(c[1], c[2], c[3], c[4])
+    else
+        tex:SetTexture(mark)
+        tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
 end
 
 function SL.LairById(id)
@@ -564,7 +588,7 @@ end
 function SL.Reset()
     for k, v in pairs(SL.DEFAULTS) do SL.db[k] = v end
     SL.db.leashLearned, SL.db.leashHeld = nil, nil
-    SL.db.skillRings = nil
+    SL.db.skillRings, SL.db.tipArea = nil, nil
     SL.ApplyAll()
 end
 
@@ -595,7 +619,7 @@ SL.On("PLAYER_LOGIN", Load)
 
 -- ---------------------------------------------------------------- slash commands
 
-local TOGGLE_ORDER = { "hero", "shield", "uptime", "ring", "lowhp", "bar", "cds", "plates", "elites",
+local TOGGLE_ORDER = { "hero", "shield", "uptime", "ring", "lowhp", "bar", "jewelry", "cds", "plates", "elites",
     "debuffs", "autoplates", "allies", "party", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
     "mapbutton", "range", "range2", "pickup", "area", "ground" }
 local TOGGLES = {
@@ -605,6 +629,7 @@ local TOGGLES = {
     ring = "ring that marks your character through trees",
     lowhp = "red screen edge when your health is low",
     bar = "compact floating action bar",
+    jewelry = "your picked jewelry under the action bar",
     cds = "cooldown numbers on the action bar and talent clocks over it",
     plates = "boss and guardian plates",
     elites = "mark elites too",
@@ -622,7 +647,7 @@ local TOGGLES = {
     range = "range circle, or set its radius: range 8",
     range2 = "second range circle, or set its radius: range2 30",
     pickup = "circle at your pickup radius",
-    area = "grow the range circles with your Area stat",
+    area = "grow the range circles and area skill circles with your Area stat",
     ground = "circles on the ground from the live camera, when the client gives it",
 }
 -- Numbers some commands take, with their setting and limits.

@@ -222,7 +222,7 @@ def("GetStatusBarColor", BAR, function(o) return o._color[1], o._color[2], o._co
 local TEX = { Texture = true }
 def("SetTexture", TEX, function(o, p) check(p == nil or type(p) == "string", "texture path"); o._tex = p end)
 def("GetTexture", TEX, function(o) return o._tex end)
-def("SetVertexColor", TEX, function(o, r, g, b, a) check(type(r) == "number" and type(g) == "number" and type(b) == "number", "vertex color") end)
+def("SetVertexColor", TEX, function(o, r, g, b, a) check(type(r) == "number" and type(g) == "number" and type(b) == "number", "vertex color"); o._vc = { r, g, b, a } end)
 def("SetTexCoord", TEX, function(o, a, b, c, d) check(type(a) == "number" and type(d) == "number", "texcoord"); o._coords = { a, b, c, d } end)
 def("SetBlendMode", TEX, function(o, m) check(m == "ADD" or m == "BLEND" or m == "MOD" or m == "ALPHAKEY" or m == "DISABLE", "blend") end)
 local FS = { FontString = true }
@@ -263,6 +263,19 @@ ActionButton1:SetPoint("BOTTOMLEFT", MainMenuBarArtFrame, "BOTTOMLEFT", 8, 4)
 CharacterMicroButton = CreateFrame("Button", "CharacterMicroButton", MainMenuBarArtFrame, "MainMenuBarMicroButton")
 TalentMicroButton = CreateFrame("Button", "TalentMicroButton", MainMenuBarArtFrame, "MainMenuBarMicroButton")
 function ActionButton_GetPagedID(b) return b:GetID() end
+
+-- Equipped jewelry: the run puts picked rings, trinkets and amulets in these slots.
+MOCK.slots = { NeckSlot = 2, Finger0Slot = 11, Finger1Slot = 12, Trinket0Slot = 13, Trinket1Slot = 14 }
+MOCK.worn = {} -- slot id -> { icon, quality, start, duration }
+function GetInventorySlotInfo(name) check(MOCK.slots[name], "unknown slot " .. tostring(name)); return MOCK.slots[name] end
+function GetInventoryItemTexture(unit, id) check(unit == "player" and type(id) == "number", "inventory texture"); return MOCK.worn[id] and MOCK.worn[id].icon end
+function GetInventoryItemQuality(unit, id) check(unit == "player" and type(id) == "number", "inventory quality"); return MOCK.worn[id] and MOCK.worn[id].quality end
+function GetInventoryItemCooldown(unit, id)
+    check(unit == "player" and type(id) == "number", "inventory cooldown")
+    local w = MOCK.worn[id]
+    if w and w.start then return w.start, w.duration, 1 end
+    return 0, 0, 0
+end
 
 -- The stock layout pass. MOCK.layoutError makes it fail the way it does in Alterac Valley,
 -- where "MinimapCluster" does not resolve (UIParent.lua:1754), before the dock and bags.
@@ -309,6 +322,7 @@ GameTooltip = {
     AddLine = function(self, t, r, g, b, wrap) check(type(t) == "string" and type(r) == "number", "tooltip line") end,
     Show = function(self) MOCK.tipShown = true end,
     Hide = function(self) MOCK.tipShown = false end,
+    SetInventoryItem = function(self, unit, id) check(unit == "player" and type(id) == "number", "tooltip inventory item"); MOCK.tipItem = id end,
 }
 GameFontNormal = { GetFont = function() return "Fonts\\FRIZQT__.TTF", 12 end }
 DEFAULT_CHAT_FRAME = { AddMessage = function(self, msg) table.insert(MOCK.chat, msg) end }

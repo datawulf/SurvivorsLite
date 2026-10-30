@@ -17,7 +17,7 @@ local M = SL.Module({})
 
 -- 1.12's minimap shows this many yards across at zoom 0 to 5 outdoors.
 local DIAMETER = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
-local LAIR_SIZE, CHEST_SIZE = 12, 9
+local LAIR_SIZE, CHEST_SIZE = 13, 11
 local RING_SPACING = 5
 
 local lairPins, chestPins, rings = {}, {}, {}
@@ -165,10 +165,13 @@ local function NewPin(size, icon)
     f:SetFrameLevel(Minimap:GetFrameLevel() + 5)
     f:SetWidth(size)
     f:SetHeight(size)
+    -- A 1 px edge in the pin's color around its icon.
+    local edge = SL.Tex(f, "BORDER", 0, 0, 0, 1)
+    edge:SetPoint("TOPLEFT", f, "TOPLEFT", -1, 1)
+    edge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 1, -1)
+    f.edge = edge
     local t = f:CreateTexture(nil, "OVERLAY")
-    t:SetTexture(SL.RAIDICONS)
-    local c = SL.ICON[icon]
-    t:SetTexCoord(c[1], c[2], c[3], c[4])
+    SL.SetMark(t, icon)
     t:SetAllPoints(f)
     f.tex = t
     -- The next lair to fill glows, and an empty one counts down under its pin.
@@ -312,14 +315,11 @@ local function Update(now)
             local dx, dy = Offset(lair)
             if dx then
                 n = n + 1
-                local f = lairPins[n] or NewPin(LAIR_SIZE, "star")
+                local look = SL.LairLook(lair)
+                local f = lairPins[n] or NewPin(LAIR_SIZE, look.icon)
                 lairPins[n] = f
-                local mark = SL.LairMark(lair)
-                if f.mark ~= mark then
-                    f.mark = mark
-                    local c = SL.ICON[mark]
-                    f.tex:SetTexCoord(c[1], c[2], c[3], c[4])
-                end
+                SL.SetMark(f.tex, look.icon)
+                local col = look.color
                 local isNext = lair == nextLair
                 local size = LAIR_SIZE
                 if isNext then size = LAIR_SIZE + 4 end
@@ -334,8 +334,9 @@ local function Update(now)
                 local away = math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
                 local label = ""
                 if lair.state == "empty" then
-                    -- Grey while it refills; the next to come back is gold and glows.
-                    f.tex:SetVertexColor(0.55, 0.55, 0.55, 1)
+                    -- Dim while it refills; the next to come back glows and counts down.
+                    f.tex:SetVertexColor(0.45, 0.45, 0.45, 1)
+                    f.edge:SetVertexColor(col[1] * 0.5, col[2] * 0.5, col[3] * 0.5, 1)
                     local left = SL.LairLeft(lair)
                     if left then
                         label = SL.MinSec(left)
@@ -347,11 +348,13 @@ local function Update(now)
                     if isNext then f.label:SetTextColor(1, 0.82, 0.2) else f.label:SetTextColor(0.7, 0.7, 0.7) end
                 elseif awake[lair.id] then
                     f.tex:SetVertexColor(1, 1, 1, 1)
+                    f.edge:SetVertexColor(col[1], col[2], col[3], 1)
                     label = "!"
                     f.label:SetTextColor(1, 0.3, 0.2)
                     f.tip2 = "Awake, " .. away
                 else
                     f.tex:SetVertexColor(1, 1, 1, 1)
+                    f.edge:SetVertexColor(col[1], col[2], col[3], 1)
                     f.tip2 = "Asleep, " .. away
                 end
                 if f.labelText ~= label then
@@ -391,7 +394,7 @@ local function Update(now)
             local dx, dy = Offset(chests[i])
             if dx then
                 m = m + 1
-                local f = chestPins[m] or NewPin(CHEST_SIZE, "circle")
+                local f = chestPins[m] or NewPin(CHEST_SIZE, SL.CHEST_ICON)
                 chestPins[m] = f
                 f.tip, f.tip2 = "Chest", math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
                 Place(f, dx * ppy, -dy * ppy, radius, false)

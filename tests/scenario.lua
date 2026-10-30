@@ -261,7 +261,7 @@ MOCK.run(30, 60)
 -- Lairs and a chest on a 1000 x 1000 yd map: world y = 2400 - 1000 mx, x = 1600 - 1000 my.
 MOCK.mapX, MOCK.mapY = 0.40, 0.62
 MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0.40,0.60,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,0.45,0.55,0;3,held,Rhahk'Zor,14,0,950,2050,0,0.35,0.65,0")
-MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40")
+MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40;8,1010,1990,0,0.41,0.59")
 MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0;guardian,14,Rhahk'Zor,20000,20000,0")
 MOCK.run(30, 60)
 local dist = SurvivorsLite.LairDistance(AZS_LAIRS[1])
@@ -279,20 +279,25 @@ local lines = statusLines()
 expect(lines["Hogger"] == "ENRAGED 40%", "boss status line: " .. tostring(lines["Hogger"]))
 expect(lines["Mother Fang"] == "asleep 90%  20 yd", "guardian status line: " .. tostring(lines["Mother Fang"]))
 expect(lines["Kobold Taskmaster"] and string.find(lines["Kobold Taskmaster"], "^next 0:4%d  86 yd$"), "next lair line: " .. tostring(lines["Kobold Taskmaster"]))
--- Each lair's own mark on its status line: Mother Fang's lair is fourth, a triangle.
+-- Each lair's own dragon head on its status line: Mother Fang's lair is fourth, bronze.
 local function rowIcon(name)
     for i = 1, table.getn(status._children) do
         local r = status._children[i]
-        if r._shown and r.name and r.name._text == name then return r.icon._coords end
+        if r._shown and r.name and r.name._text == name then return r.icon end
     end
 end
 local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4] end
 local ICON = SurvivorsLite.ICON
-expect(same(rowIcon("Mother Fang"), ICON.triangle) and same(rowIcon("Kobold Taskmaster"), ICON.circle) and same(rowIcon("Rhahk'Zor"), ICON.diamond), "status lines do not carry the lair marks")
-expect(same(rowIcon("Hogger"), ICON.skull), "boss line lost its skull")
--- Mother Fang's plate wears the triangle too.
+local LOOKS = SurvivorsLite.LAIR_LOOKS
+local function wears(tex, n) return tex and tex._tex == LOOKS[n].icon end
+expect(wears(rowIcon("Mother Fang"), 4) and wears(rowIcon("Kobold Taskmaster"), 2) and wears(rowIcon("Rhahk'Zor"), 3), "status lines do not carry the lair icons")
+expect(LOOKS[4].icon ~= LOOKS[2].icon and LOOKS[2].icon ~= LOOKS[3].icon, "lairs share an icon")
+local hoggerIcon = rowIcon("Hogger")
+expect(hoggerIcon and hoggerIcon._tex == SurvivorsLite.RAIDICONS and same(hoggerIcon._coords, ICON.skull), "boss line lost its skull")
+-- Mother Fang's plate wears the bronze head and its edge takes the lair's color.
 local mfIcon = overlay(plain[5]) and overlay(plain[5]).icon
-expect(mfIcon and same(mfIcon._coords, ICON.triangle), "guardian plate does not wear its lair's mark")
+expect(wears(mfIcon, 4), "guardian plate does not wear its lair's icon")
+expect(same(overlay(plain[5]).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "guardian plate edge not in its lair's color")
 expect(lines["Edwin VanCleef"] and string.find(lines["Edwin VanCleef"], "^in "), "next boss line")
 
 -- Pins: the lair 20 yd north is 6 units up at zoom 0 (140 units for 466.67 yd).
@@ -302,18 +307,22 @@ local function pinAt(x, y)
         if c._shown and c._point and c.tex and math.abs(c._point[4] - x) < 0.1 and math.abs(c._point[5] - y) < 0.1 then return c end
     end
 end
-expect(pinAt(0, 6) and same(pinAt(0, 6).tex._coords, ICON.triangle), "no triangle pin for the lair 20 yd north")
+expect(pinAt(0, 6) and wears(pinAt(0, 6).tex, 4), "no bronze pin for the lair 20 yd north")
+expect(same(pinAt(0, 6).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "lair pin edge not in its color")
 local nextPin = pinAt(15, 21)
 expect(nextPin and nextPin.tip2 and string.find(nextPin.tip2, "^Back in 0:4%d, 86 yd away. Comes back first."), "next lair pin tooltip: " .. tostring(nextPin and nextPin.tip2))
-expect(nextPin and same(nextPin.tex._coords, ICON.circle) and nextPin.glow._shown and nextPin._w == 16, "next lair pin not marked")
+expect(nextPin and wears(nextPin.tex, 2) and nextPin.glow._shown and nextPin._w == 17, "next lair pin not marked")
 expect(nextPin and string.find(nextPin.label._text or "", "^0:4%d$"), "next lair pin has no countdown")
 expect(not pinAt(0, 6).glow._shown, "a held lair glows")
-local chestShown = false
+local farChest, nearChest = false, nil
 for i = 1, table.getn(Minimap._children) do
     local c = Minimap._children[i]
-    if c._shown and c.tip == "Chest" then chestShown = true end
+    if c._shown and c.tip == "Chest" then
+        if c.tip2 == "32 yd away" then nearChest = c else farChest = true end
+    end
 end
-expect(not chestShown, "a chest 300 yd away shows on the minimap")
+expect(not farChest, "a chest 300 yd away shows on the minimap")
+expect(nearChest and nearChest.tex._tex == SurvivorsLite.CHEST_ICON and pinAt(3, 9) == nearChest, "the chest 32 yd away has no chest pin")
 MOCK.zoom = 5
 MOCK.run(6, 60)
 expect(pinAt(0, 21), "zoom did not scale the pins")
@@ -471,7 +480,8 @@ expect(not first.label._shown, "labels stayed after lock")
 
 -- ---------------------------------------------------------------- skill circles
 
--- Zoom 30 and tilt 0.5 from the steps above. A circle is its tooltip's yards, as shown.
+-- Zoom 30 and tilt 0.5 from the steps above. A targeting reach is its tooltip's yards; an
+-- area (radius or cone) grows by Area on top, 1.5 here.
 local skills = SurvivorsLite.skills
 expect(table.getn(skills) == 2, "skills with a reach: " .. table.getn(skills))
 expect(skills[1] and skills[1].name == "Eviscerate" and skills[1].yards == 12 and skills[1].kind == "range", "Eviscerate reach not read")
@@ -487,19 +497,30 @@ slash("skill eviscerate")
 slash("skill blade flurry")
 local ev, bf = skillCircle("Eviscerate"), skillCircle("Blade Flurry")
 expect(ev and ev._shown and near(dot(ev, 1)[4], 12 * 30) and ev.text == "Eviscerate 12 yd", "Eviscerate circle: " .. tostring(ev and ev.text))
-expect(bf and bf._shown and near(dot(bf, 1)[4], 8 * 30) and bf.text == "Blade Flurry 8 yd", "Blade Flurry circle: " .. tostring(bf and bf.text))
+expect(bf and bf._shown and near(dot(bf, 1)[4], 12 * 30) and bf.text == "Blade Flurry 12 yd", "Blade Flurry circle: " .. tostring(bf and bf.text))
 slash("skill blood fury")
 expect(chatHas("no skill named 'blood fury'"), "a skill without a reach was offered")
 slash("skills")
-expect(chatHas("Eviscerate 12.0 yd range"), "skills list")
+expect(chatHas("Eviscerate 12.0 yd range") and chatHas("Blade Flurry 12.0 yd radius"), "skills list")
 
--- Area grows: the client rewrites the tooltips. Blade Flurry grows with Area, Eviscerate
--- does not, and each circle follows its own tooltip with nothing added.
-MOCK.tips[2] = { { "Blade Flurry" }, { "10 yd radius" } }
+-- Area grows to 2 and the tooltips keep their base yards: Blade Flurry's area grows with it,
+-- Eviscerate's targeting reach does not.
 MOCK.addon("AZS", "hp=2000;liv=2;area=2;pick=16")
 MOCK.run(40, 60)
-expect(bf.text == "Blade Flurry 10 yd" and near(dot(bf, 1)[4], 300), "Blade Flurry did not follow its tooltip: " .. tostring(bf.text))
+expect(bf.text == "Blade Flurry 16 yd" and near(dot(bf, 1)[4], 480), "Blade Flurry did not grow with Area: " .. tostring(bf.text))
 expect(ev.text == "Eviscerate 12 yd" and near(dot(ev, 1)[4], 360), "Eviscerate grew with Area it does not use: " .. tostring(ev.text))
+-- Area off: areas stay at their tooltip's yards.
+slash("area off")
+expect(bf.text == "Blade Flurry 8 yd", "area off still grew Blade Flurry: " .. tostring(bf.text))
+slash("area on")
+-- A tooltip that follows Area at the same rank already holds it: that skill is used as shown.
+MOCK.tips[2] = { { "Blade Flurry" }, { "12 yd radius" } }
+MOCK.addon("AZS", "hp=2000;liv=2;area=3;pick=16")
+MOCK.run(40, 60)
+expect(SurvivorsLite.db.tipArea and SurvivorsLite.db.tipArea["Blade Flurry"] and chatHas("Blade Flurry's tooltip already counts your Area"), "a tooltip that follows Area was not noticed")
+expect(bf.text == "Blade Flurry 12 yd", "a tooltip holding Area got Area again: " .. tostring(bf.text))
+SurvivorsLite.db.tipArea = nil
+MOCK.tips[2] = { { "Blade Flurry" }, { "8 yd radius" } }
 -- A new rank reaches farther: its circle follows.
 MOCK.tips[1] = { { "Eviscerate", "14 yd range" }, { "Rank 4" } }
 MOCK.addon("AZSSPELLS", "eviscerate,6762,4,5,5;blade_flurry,13877,2,8,8")
@@ -686,6 +707,32 @@ expect(not panel._shown, "/slite options did not toggle the window closed")
 MOCK.units.party1 = nil
 MOCK.event("PARTY_MEMBERS_CHANGED")
 expect(not MOCK.friendPlates, "friendly plates left on after the party left")
+
+-- Picked jewelry: a row under the floating bar, in slot order, with quality and cooldowns.
+local jewelry = SurvivorsLiteJewelry
+MOCK.event("UNIT_INVENTORY_CHANGED", "player")
+expect(not jewelry._shown, "the jewelry row shows with nothing picked")
+MOCK.worn[11] = { icon = "Interface\\Icons\\INV_Jewelry_Ring_15", quality = 4 }
+MOCK.worn[13] = { icon = "Interface\\Icons\\INV_Misc_StoneTablet_11", quality = 3, start = GetTime(), duration = 30 }
+MOCK.event("UNIT_INVENTORY_CHANGED", "player")
+MOCK.run(10, 60)
+local pieces = {}
+for i = 1, table.getn(jewelry._children) do
+    local c = jewelry._children[i]
+    if c._shown and c.tex then table.insert(pieces, c) end
+end
+expect(jewelry._shown and table.getn(pieces) == 2, "jewelry row pieces: " .. table.getn(pieces))
+expect(jewelry._point and jewelry._point[2] == SurvivorsLiteBar and jewelry._point[3] == "BOTTOMLEFT", "jewelry row not under the bar")
+expect(pieces[1].tex._tex == "Interface\\Icons\\INV_Jewelry_Ring_15" and same(pieces[1].border._vc, { 0.64, 0.21, 0.93, 1 }), "ring not shown with its quality")
+expect(pieces[2].shade._shown and pieces[2].text._text == "30", "trinket cooldown: " .. tostring(pieces[2].text._text))
+MOCK.fire(pieces[1], "OnEnter")
+expect(MOCK.tipItem == 11, "jewelry tooltip did not show the ring")
+slash("jewelry off")
+expect(not jewelry._shown, "jewelry off left the row")
+slash("jewelry on")
+expect(jewelry._shown, "jewelry on did not bring the row back")
+MOCK.worn = {}
+MOCK.event("UNIT_INVENTORY_CHANGED", "player")
 
 -- Alterac Valley: the game's layout pass cannot find MinimapCluster. No error window, and the
 -- chat dock and bags are still placed; any other error still comes through.

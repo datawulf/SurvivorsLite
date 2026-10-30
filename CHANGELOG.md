@@ -3,6 +3,20 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.8.0 - 2026-10-30
+
+- Picked jewelry under the floating action bar: the amulet, rings and trinkets you picked
+  this run, with their quality, cooldowns and tooltips. `/slite jewelry on/off`.
+- Skill circles of area skills (a radius or a cone) grow by your Area stat again, on top of
+  the tooltip's yards, so the circle matches the area the skill hits. A targeting reach
+  ("12 yd range", "within 30 yd") keeps its tooltip's yards. A skill whose tooltip moves
+  with Area at the same rank is noticed and used as shown. "Grow with your Area stat" turns
+  it off.
+- Unique icons: every guardian's lair is a dragon head in a color of its own (red, blue,
+  green, bronze, purple) on its minimap pin, its status line and its guardian's plate,
+  with an edge in that color. Chests on the minimap are small treasure chests.
+- Checked against web build `019734ed2f34`: the addon API is unchanged.
+
 ## 1.7.1 - 2026-10-29
 
 - Stops the error window in Alterac Valley: "QuestTimerFrame:SetPoint(): Couldn't find

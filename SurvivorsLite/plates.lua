@@ -293,13 +293,15 @@ local function Style(d, kind, name)
         HideDebuffs(o)
     else
         o.fill:SetStatusBarColor(s.fill[1], s.fill[2], s.fill[3])
-        o.edge:SetVertexColor(s.edge[1], s.edge[2], s.edge[3], 1)
-        -- A guardian wears its lair's mark, as on the minimap and in the status list.
-        local icon = s.icon
+        -- A guardian wears its lair's icon and color, as on the minimap and in the status list.
+        local icon, edge = s.icon, s.edge
         local lair = kind == "guardian" and d.match and SL.LairById(d.match.id)
-        if lair then icon = SL.LairMark(lair) end
-        local c = SL.ICON[icon]
-        o.icon:SetTexCoord(c[1], c[2], c[3], c[4])
+        if lair then
+            local look = SL.LairLook(lair)
+            icon, edge = look.icon, look.color
+        end
+        o.edge:SetVertexColor(edge[1], edge[2], edge[3], 1)
+        SL.SetMark(o.icon, icon)
         o.icon:SetWidth(s.size)
         o.icon:SetHeight(s.size)
         o.icon:Show()

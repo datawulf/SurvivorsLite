@@ -54,23 +54,28 @@ end
 local count = 0
 local counting = false
 
--- A line; `mark` is a lair's own icon, shown in its own colors.
-local function Line(kind, name, status, sr, sg, sb, mark)
+-- A line; `look` is a lair's own icon and color, as on its minimap pin.
+local function Line(kind, name, status, sr, sg, sb, look)
     if count >= MAX_ROWS then return end
     count = count + 1
     local r = rows[count]
-    local c = SL.ICON[mark or ICON[kind]]
-    r.icon:SetTexCoord(c[1], c[2], c[3], c[4])
     local col = COLOR[kind]
-    if mark and kind ~= "empty" then
-        r.icon:SetVertexColor(1, 1, 1, 1)
-    elseif mark then
-        r.icon:SetVertexColor(0.55, 0.55, 0.55, 1)
+    if look then
+        SL.SetMark(r.icon, look.icon)
+        col = look.color
+        if kind ~= "empty" then
+            r.icon:SetVertexColor(1, 1, 1, 1)
+            r.name:SetTextColor(col[1], col[2], col[3])
+        else
+            r.icon:SetVertexColor(0.45, 0.45, 0.45, 1)
+            r.name:SetTextColor(col[1] * 0.7, col[2] * 0.7, col[3] * 0.7)
+        end
     else
+        SL.SetMark(r.icon, ICON[kind])
         r.icon:SetVertexColor(col[1], col[2], col[3], 1)
+        r.name:SetTextColor(col[1], col[2], col[3])
     end
     r.name:SetText(name)
-    r.name:SetTextColor(col[1], col[2], col[3])
     r.status:SetText(status)
     r.status:SetTextColor(sr or 1, sg or 1, sb or 1)
     -- Bright when its plate is up near you.
@@ -113,7 +118,7 @@ local function Rebuild()
             for i = 1, table.getn(lairs) do
                 local lair = lairs[i]
                 local name = tostring(lair.name or "?")
-                local mark = SL.LairMark(lair)
+                local mark = SL.LairLook(lair)
                 local dist = SL.LairDistance and SL.LairDistance(lair)
                 local away = ""
                 if dist then away = "  " .. math.floor(dist + 0.5) .. " yd" end

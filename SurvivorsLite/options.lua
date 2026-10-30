@@ -334,7 +334,9 @@ local function SkillRow(col, i)
         hover:Show()
         local s = SL.skills[i]
         if s then
-            ShowTip(this, s.name, "A circle at " .. (KIND_TIP[s.kind] or "its reach") .. ", read from its tooltip, so it grows with whatever grows this skill. Remembered by name for later runs.")
+            local grows = "."
+            if s.kind == "radius" or s.kind == "cone" then grows = ", grown by your Area stat." end
+            ShowTip(this, s.name, "A circle at " .. (KIND_TIP[s.kind] or "its reach") .. ": " .. s.yards .. " yd in its tooltip" .. grows .. " It follows ranks and upgrades by itself. Remembered by name for later runs.")
         end
     end)
     b:SetScript("OnLeave", function()
@@ -443,6 +445,8 @@ local function Build()
     Slider(left, "Bar size", "Size of the floating action bar.", 0.5, 1.5, 0.05, PctText, get, set)
     get, set = Toggle("cds")
     Check(left, "Cooldown numbers", "Seconds left on each spell's button, and the talents' clocks over the bar.", get, set)
+    get, set = Toggle("jewelry")
+    Check(left, "Picked jewelry", "The amulet, rings and trinkets you picked this run in a row under the bar, with their cooldowns. Point at one for its tooltip.", get, set)
 
     Header(left, "Layout")
     get, set = Toggle("scale")
@@ -493,7 +497,7 @@ local function Build()
     get, set = RangeSetting("rangeYd")
     Slider(right, "Radius", "The circle's radius in yards, before your Area stat.", 1, 60, 1, YardsText, get, set)
     get, set = RangeSetting("area")
-    Check(right, "Grow with your Area stat", "Multiplies that radius by the run's Area stat, as it does for your spells.", get, set)
+    Check(right, "Grow with your Area stat", "Multiplies that radius and the skill circles of area skills (a radius or a cone) by the run's Area stat, as the game does for their areas.", get, set)
 
     Header(right, "Skill circles")
     for i = 1, SKILL_ROWS do SkillRow(right, i) end
