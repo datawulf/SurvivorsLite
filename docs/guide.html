@@ -120,8 +120,9 @@
   <p>While a guardian chases you a bar over your character shows it, for example
   "Mother Fang  32 / 40 yd", green, orange then red, and "gives up soon" at about 85
   percent. The minimap draws a ring at the leash around each held lair.</p>
-  <p>The distance is measured from you to the lair through your map position, so it needs
-  the run's lair line and a zone map. The Guardian leash slider or
+  <p>The distance is measured from you to the lair through your map position. Where the
+  zone has no map, like Naxxramas, the run line's world positions stand in; they move only
+  when the line comes. The Guardian leash slider or
   <code>/slite leash 45</code> sets it by hand and forgets what play taught.</p>
   <p class="note">Not confirmed in game yet. If the "?" never goes away after a guardian
   resets on you, set the leash by hand and please
@@ -231,8 +232,9 @@
     (<code>/slite mobs hide</code>) keeps crowds calm.</li>
     <li>Ground circles assume flat ground and a camera that orbits a point 1.5 yd above your
     feet.</li>
-    <li>Minimap pins assume 1.12's minimap scale and that the run's lair and chest
-    coordinates are those of your zone's map.</li>
+    <li>Minimap pins assume 1.12's minimap scale, a smaller one indoors, and that the
+    run's lair and chest coordinates are those of your zone's map. Without a zone map they
+    follow the run line's world position and move in steps.</li>
     <li>Skill circles need the skill's tooltip to name its reach in yards. A buff or a self
     heal is not offered. Which skills Area grows is read from the kind of reach the
     tooltip names; the game's own rule is not visible to addons.</li>

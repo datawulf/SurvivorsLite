@@ -307,8 +307,17 @@ function CameraZoomOut(v) if MOCK.camera then MOCK.camera.d = MOCK.camera.d + v 
 -- The minimap and the world map position.
 Minimap = CreateFrame("Frame", "Minimap", UIParent)
 Minimap._w, Minimap._h = 140, 140
-MOCK.zoom = 0
+-- Zoom 0 to 5 in two settings, one for outdoors and one for indoors (MOCK.indoors); SetZoom
+-- writes the one for where you stand.
+MOCK.zoom, MOCK.zoomSets = 0, 0
+MOCK.cvars.minimapZoom, MOCK.cvars.minimapInsideZoom = "0", "0"
 Minimap.GetZoom = function(self) return MOCK.zoom end
+Minimap.GetZoomLevels = function(self) return 6 end
+Minimap.SetZoom = function(self, z)
+    check(type(z) == "number" and z >= 0 and z <= 5, "minimap zoom " .. tostring(z))
+    MOCK.zoom, MOCK.zoomSets = z, MOCK.zoomSets + 1
+    if MOCK.indoors then MOCK.cvars.minimapInsideZoom = tostring(z) else MOCK.cvars.minimapZoom = tostring(z) end
+end
 WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
 WorldMapFrame:Hide()
 MOCK.mapX, MOCK.mapY = 0, 0

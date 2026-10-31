@@ -3,6 +3,16 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.8.1 - 2026-10-31
+
+- Minimap pins and lair distances in zones without a map, like Naxxramas. There the game
+  gives no map position, so the run line's world position of your hero places the pins
+  and measures the distances. They move when the line comes rather than every frame.
+- Indoors the minimap shows less ground (300 yd across at the widest zoom instead of
+  467). The pins now use the indoor scale while you stand indoors.
+- A zone whose lines carry no map coordinates no longer reuses the last zone's map scale.
+- Tested against the addon API of web build `fe298f333712`.
+
 ## 1.8.0 - 2026-10-30
 
 - Picked jewelry under the floating action bar: the amulet, rings and trinkets you picked

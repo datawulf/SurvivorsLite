@@ -1,7 +1,9 @@
 -- Pins on the minimap: every guardian's lair (gold asleep, red awake, grey while it refills)
 -- with a ring at its leash radius, and the chests. The run's lair and chest lines carry both
 -- map and world coordinates, so the map's size in yards comes from them and your distance to
--- a lair from your own map position.
+-- a lair from your own map position. Where the zone has no map (Naxxramas and other
+-- instances) the run line's world position of your hero stands in; it moves only when the
+-- line comes, while the map position follows you every frame.
 --
 -- The leash is how far from its lair you can lead a guardian before it gives up and goes
 -- home. The client does not say, so it starts at the setting and is learned both ways:
@@ -15,8 +17,9 @@
 local SL = SurvivorsLite
 local M = SL.Module({})
 
--- 1.12's minimap shows this many yards across at zoom 0 to 5 outdoors.
-local DIAMETER = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
+-- 1.12's minimap shows this many yards across at zoom 0 to 5, outdoors and indoors.
+local OUTDOOR = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
+local INDOOR = { [0] = 300, 240, 180, 120, 80, 50 }
 local LAIR_SIZE, CHEST_SIZE = 13, 11
 local RING_SPACING = 5
 
@@ -27,6 +30,8 @@ local awake = {}     -- lair id -> true while its guardian is awake
 local chase = {}     -- lair id -> { { t, d }, ... } while its guardian chases, not yet counted
 local warned = {}    -- lair id -> true once the leash warning showed for this chase
 local CONFIRM = 2    -- seconds a guardian must stay awake after a sample for it to count
+local lastSetMap     -- when the world map was last set to your zone
+local indoors, indoorsZoom, probedAt -- the minimap's indoor answer, for which zoom, and when
 local ticker
 
 -- ---------------------------------------------------------------- map scale and position
@@ -57,6 +62,8 @@ local function Usable(s, r) return s and r > 0.98 and s > 100 and s < 50000 end
 -- WoW's world x runs north and y west, the map's across east and down south; the other
 -- pairing is tried too in case the run's lines use it.
 local function FitScale()
+    -- A scale left from the last zone would place this one's pins wrong.
+    scaleX, scaleY = nil, nil
     local points = {}
     local sources = { AZS_LAIRS, AZS_CHESTS }
     for k = 1, 2 do
@@ -85,7 +92,10 @@ local function PlayerPos()
     -- The world map's zone is the player's to pick while it is open.
     if WorldMapFrame and WorldMapFrame:IsVisible() then return px, py end
     local x, y = GetPlayerMapPosition("player")
-    if (not x or (x == 0 and y == 0)) and SetMapToCurrentZone then
+    -- A zone without a map reads 0, 0 for good, so the map is set to it only now and then.
+    local now = GetTime()
+    if (not x or (x == 0 and y == 0)) and SetMapToCurrentZone and not (lastSetMap and now - lastSetMap < 5) then
+        lastSetMap = now
         SetMapToCurrentZone()
         x, y = GetPlayerMapPosition("player")
     end
@@ -93,10 +103,17 @@ local function PlayerPos()
     return px, py
 end
 
--- Yards east and south from you to a point with map coordinates, nil while unknown.
+-- Yards east and south from you to a point, nil while unknown.
 local function Offset(p)
-    if not (scaleX and px and type(p.mx) == "number" and type(p.my) == "number") then return nil end
-    return (p.mx - px) * scaleX, (p.my - py) * scaleY
+    if scaleX and px and type(p.mx) == "number" and type(p.my) == "number" then
+        return (p.mx - px) * scaleX, (p.my - py) * scaleY
+    end
+    -- WoW's world x runs north and y west, in yards.
+    local run = AZS_RUN
+    if type(run) == "table" and type(run.px) == "number" and type(run.py) == "number"
+        and type(p.x) == "number" and type(p.y) == "number" then
+        return run.py - p.y, run.px - p.x
+    end
 end
 
 function SL.LairDistance(lair)
@@ -117,6 +134,47 @@ end
 -- Forgets what play taught, for the slider and /slite leash.
 function SL.ForgetLeash()
     SL.db.leashLearned, SL.db.leashHeld = nil, nil
+end
+
+-- ---------------------------------------------------------------- the minimap's scale
+
+-- The minimap keeps one zoom for outdoors and one for indoors, each in a setting of its own,
+-- and shows a smaller area indoors. When both settings hold the minimap's zoom, a step to
+-- the next zoom and back shows which one moves; the answer holds until you go in or out.
+local function Indoors(zoom)
+    if type(GetCVar) ~= "function" then return false end
+    local out, ins = tonumber(GetCVar("minimapZoom")), tonumber(GetCVar("minimapInsideZoom"))
+    if not (out and ins) or (zoom ~= out and zoom ~= ins) then return false end
+    if out ~= ins then return zoom == ins end
+    if indoorsZoom == zoom then return indoors end
+    indoors, indoorsZoom = false, zoom
+    if not Minimap.SetZoom then return false end
+    local top = 5
+    if Minimap.GetZoomLevels then top = (Minimap:GetZoomLevels() or 6) - 1 end
+    local step = zoom + 1
+    if step > top then step = zoom - 1 end
+    probedAt = GetTime()
+    Minimap:SetZoom(step)
+    local movedIn = tonumber(GetCVar("minimapInsideZoom")) == step
+    local movedOut = tonumber(GetCVar("minimapZoom")) == step
+    Minimap:SetZoom(zoom)
+    if SetCVar then
+        if tonumber(GetCVar("minimapZoom")) ~= out then SetCVar("minimapZoom", out) end
+        if tonumber(GetCVar("minimapInsideZoom")) ~= ins then SetCVar("minimapInsideZoom", ins) end
+    end
+    indoors = movedIn and not movedOut
+    return indoors
+end
+
+-- Going in or out asks again, but not the minimap's zoom event that a step itself causes.
+local function ForgetIndoors()
+    indoorsZoom = nil
+    if ticker then SL.Wake(ticker) end
+end
+
+local function ZoomChanged()
+    if probedAt and GetTime() - probedAt < 1 then return end
+    ForgetIndoors()
 end
 
 -- ---------------------------------------------------------------- the leash bar
@@ -304,7 +362,9 @@ local function Update(now)
     local zoom = Minimap:GetZoom() or 0
     local width = Minimap:GetWidth() or 140
     local radius = width / 2
-    local ppy = width / (DIAMETER[zoom] or DIAMETER[0])
+    local across = OUTDOOR
+    if Indoors(zoom) then across = INDOOR end
+    local ppy = width / (across[zoom] or across[0])
     local lairs = AZS_LAIRS
     local n = 0
     if db.lairs and type(lairs) == "table" then
@@ -449,14 +509,17 @@ function M.init()
     SL.OnAzs("AZSCHESTS", PointsChanged)
     SL.OnAzs("AZSUNITS", UnitsChanged)
     SL.On("PLAYER_ENTERING_WORLD", function()
-        px, py = nil, nil
+        px, py, lastSetMap, indoorsZoom = nil, nil, nil, nil
         if SetMapToCurrentZone and not (WorldMapFrame and WorldMapFrame:IsVisible()) then SetMapToCurrentZone() end
         PointsChanged()
     end)
     SL.On("ZONE_CHANGED_NEW_AREA", function()
-        px, py = nil, nil
-        SL.Wake(ticker)
+        px, py, lastSetMap = nil, nil, nil
+        ForgetIndoors()
     end)
+    SL.On("ZONE_CHANGED", ForgetIndoors)
+    SL.On("ZONE_CHANGED_INDOORS", ForgetIndoors)
+    SL.On("MINIMAP_UPDATE_ZOOM", ZoomChanged)
 end
 
 function M.apply()

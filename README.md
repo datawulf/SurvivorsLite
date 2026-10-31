@@ -2,7 +2,7 @@
 
 A small, fast HUD addon for [Azeroth Survivors](https://wow.aethus.pl), written as a light
 replacement for SurvivorsDragonUi. Tested against the client's addon API of web build
-`019734ed2f34` (2026-10-30).
+`fe298f333712` (2026-10-31).
 
 - Download: [latest release](https://github.com/datawulf/SurvivorsLite/releases/latest)
 - Documentation: [datawulf.github.io/SurvivorsLite](https://datawulf.github.io/SurvivorsLite/)
@@ -125,6 +125,8 @@ Not confirmed in game yet:
 - Area skills growing by your Area stat on top of their tooltip (1.8.0). If an area skill
   still hits farther than its circle, the game may count the enemy's body size too.
 - The dragon head and chest icons on the minimap (1.8.0).
+- Minimap pins and lair distances in zones without a map such as Naxxramas, and the
+  indoor minimap scale (1.8.1).
 
 Tried and not possible from an addon: see [Limits](#limits).
 
@@ -179,8 +181,9 @@ is learned in play, both ways:
 - When an awake guardian falls back asleep alive while you live, where you stood is where
   it gave up. The addon says so in chat and the "?" goes away.
 
-The distance is measured from you to the lair, through your map position and the lair's,
-so it needs the run's lair line and a zone map. Moving the leash slider or
+The distance is measured from you to the lair through your map position and the lair's.
+Where the zone has no map (Naxxramas) the run line's world positions stand in, which
+move only when the line comes. Moving the leash slider or
 `/slite leash N` forgets what play taught.
 
 ## Commands
@@ -257,8 +260,11 @@ second, 0.06 ms per frame. Use `/slite perf` in game for the real number.
   feet, and they lag the camera's own smoothing by up to half a second.
 - Plain enemy bars and hidden plates change the client's own plate parts. If the client
   ever lays its plates out again, they show as the game's plates.
-- Minimap pins assume 1.12's minimap scale (466.67 yd across at zoom 0, outdoors) and that
-  the run's lair and chest map coordinates are those of your zone's map.
+- Minimap pins assume 1.12's minimap scale (466.67 yd across at zoom 0 outdoors, 300
+  indoors) and that the run's lair and chest map coordinates are those of your zone's map.
+  Where both minimap zoom settings match, telling indoors from outdoors takes one zoom
+  step and back, once per place. Without a zone map the pins follow the run line's world
+  position, so they move in steps.
 - Skill circles need the skill's tooltip to name its reach in yards; a skill without
   one (a buff, a self heal) is not offered. Which skills Area grows is read from the kind
   of reach the tooltip names, not from the game's own rules, which addons cannot see.

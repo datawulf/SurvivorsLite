@@ -28,6 +28,19 @@
   is on the <a href="status.html">feature status</a> page. Downloads are on
   <a href="https://github.com/datawulf/SurvivorsLite/releases">GitHub Releases</a>.</p>
 
+  <h2 id="v1.8.1">1.8.1 <span class="note">2026-10-31</span></h2>
+  <ul>
+    <li>Minimap pins and lair distances in zones without a map, like Naxxramas. There the
+    game gives no map position, so the run line's world position of your hero places the
+    pins and measures the distances. They move when the line comes rather than every
+    frame.</li>
+    <li>Indoors the minimap shows less ground (300 yd across at the widest zoom instead of
+    467). The pins now use the indoor scale while you stand indoors.</li>
+    <li>A zone whose lines carry no map coordinates no longer reuses the last zone's map
+    scale.</li>
+    <li>Tested against the addon API of web build <code>fe298f333712</code>.</li>
+  </ul>
+
   <h2 id="v1.8.0">1.8.0 <span class="note">2026-10-30</span></h2>
   <ul>
     <li>Picked jewelry under the floating action bar: the amulet, rings and trinkets you

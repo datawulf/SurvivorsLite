@@ -307,13 +307,14 @@ local function pinAt(x, y)
         if c._shown and c._point and c.tex and math.abs(c._point[4] - x) < 0.1 and math.abs(c._point[5] - y) < 0.1 then return c end
     end
 end
-expect(pinAt(0, 6) and wears(pinAt(0, 6).tex, 4), "no bronze pin for the lair 20 yd north")
-expect(same(pinAt(0, 6).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "lair pin edge not in its color")
+local heldPin = pinAt(0, 6)
+expect(heldPin and wears(heldPin.tex, 4), "no bronze pin for the lair 20 yd north")
+expect(heldPin and same(heldPin.edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "lair pin edge not in its color")
 local nextPin = pinAt(15, 21)
 expect(nextPin and nextPin.tip2 and string.find(nextPin.tip2, "^Back in 0:4%d, 86 yd away. Comes back first."), "next lair pin tooltip: " .. tostring(nextPin and nextPin.tip2))
 expect(nextPin and wears(nextPin.tex, 2) and nextPin.glow._shown and nextPin._w == 17, "next lair pin not marked")
 expect(nextPin and string.find(nextPin.label._text or "", "^0:4%d$"), "next lair pin has no countdown")
-expect(not pinAt(0, 6).glow._shown, "a held lair glows")
+expect(heldPin and not heldPin.glow._shown, "a held lair glows")
 local farChest, nearChest = false, nil
 for i = 1, table.getn(Minimap._children) do
     local c = Minimap._children[i]
@@ -323,11 +324,12 @@ for i = 1, table.getn(Minimap._children) do
 end
 expect(not farChest, "a chest 300 yd away shows on the minimap")
 expect(nearChest and nearChest.tex._tex == SurvivorsLite.CHEST_ICON and pinAt(3, 9) == nearChest, "the chest 32 yd away has no chest pin")
-MOCK.zoom = 5
+Minimap:SetZoom(5)
 MOCK.run(6, 60)
 expect(pinAt(0, 21), "zoom did not scale the pins")
-MOCK.zoom = 0
+Minimap:SetZoom(0)
 MOCK.run(6, 60)
+expect(MOCK.zoom == 0 and MOCK.cvars.minimapZoom == "0" and MOCK.cvars.minimapInsideZoom == "0", "the indoor check left the zoom changed")
 local ringsShown = 0
 for i = 1, table.getn(Minimap._children) do
     local c = Minimap._children[i]
@@ -385,6 +387,47 @@ MOCK.run(6, 60)
 slash("leash 45")
 expect(SurvivorsLite.db.leash == 45 and SurvivorsLite.db.leashLearned == nil and SurvivorsLite.db.leashHeld == nil, "leash setting did not replace the learned one")
 MOCK.mapY = 0.62
+
+-- Naxxramas has no zone map: your map position reads 0, 0 and the lair and chest lines carry
+-- no map coordinates. The run line's world position places the pins, indoors at the indoor
+-- scale (140 units for 300 yd), and the status list still says how far the lairs are.
+MOCK.mapX, MOCK.mapY = 0, 0
+MOCK.indoors = true
+MOCK.event("ZONE_CHANGED_NEW_AREA")
+MOCK.addon("AZSRUN", "ph=playing;t=300;sl=0;px=980;py=2000;pz=0;pf=0")
+MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,,,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,,,0;3,held,Rhahk'Zor,14,0,950,2050,0,,,0")
+MOCK.addon("AZSCHESTS", "8,1010,1990,0,0,0")
+local zoomSets, mapSets = MOCK.zoomSets, MOCK.mapSet or 0
+MOCK.run(30, 60)
+lines = statusLines()
+expect(lines["Mother Fang"] == "asleep 90%  20 yd", "no lair distance without a zone map: " .. tostring(lines["Mother Fang"]))
+local naxxPin = pinAt(0, 9.33)
+expect(naxxPin and wears(naxxPin.tex, 4), "no pin 20 yd north without a zone map, at the indoor scale")
+local naxxChest = pinAt(4.67, 14)
+expect(naxxChest and naxxChest.tip2 == "32 yd away", "no chest pin without a zone map")
+expect(MOCK.zoomSets == zoomSets + 2 and MOCK.zoom == 0 and MOCK.cvars.minimapInsideZoom == "0" and MOCK.cvars.minimapZoom == "0", "the indoor check did not step the zoom and back once: " .. (MOCK.zoomSets - zoomSets))
+MOCK.addon("AZSRUN", "ph=playing;t=301;sl=0;px=990;py=2000;pz=0;pf=0")
+MOCK.run(180, 60)
+expect(pinAt(0, 4.67), "the pin did not follow the run line's position")
+expect((MOCK.mapSet or 0) - mapSets <= 1, "the map was set to the zone every tick: " .. ((MOCK.mapSet or 0) - mapSets))
+expect(MOCK.zoomSets == zoomSets + 2, "the indoor check stepped the zoom again")
+-- Outdoors again, in a zone whose lines carry no usable map coordinates: the last zone's
+-- map scale is not reused, the world position places the pin at the outdoor scale.
+MOCK.indoors = nil
+MOCK.mapX, MOCK.mapY = 0.40, 0.62
+MOCK.event("ZONE_CHANGED_NEW_AREA")
+MOCK.addon("AZSRUN", "ph=playing;t=302;sl=0;px=980;py=2000;pz=0;pf=0")
+MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0,0,1")
+MOCK.addon("AZSCHESTS", "")
+MOCK.run(30, 60)
+expect(pinAt(0, 6), "a map scale from the last zone placed the pin")
+-- Back in a zone with a map.
+MOCK.event("ZONE_CHANGED_NEW_AREA")
+MOCK.addon("AZSRUN", "ph=playing;t=302;sl=0")
+MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0.40,0.60,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,0.45,0.55,0;3,held,Rhahk'Zor,14,0,950,2050,0,0.35,0.65,0")
+MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40;8,1010,1990,0,0.41,0.59")
+MOCK.run(30, 60)
+expect(pinAt(0, 6), "the outdoor scale did not come back")
 
 -- The minimap gear opens the options.
 local gear

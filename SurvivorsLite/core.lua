@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.8.0" }
+SurvivorsLite = { version = "1.8.1" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
