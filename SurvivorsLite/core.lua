@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.8.1" }
+SurvivorsLite = { version = "1.9.0" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
@@ -12,6 +12,7 @@ SL.DEFAULTS = {
     plates = true, autoplates = true, mobs = "bars", elites = false, debuffs = true,
     allies = true, party = true, partyX = -360, partyY = 110,
     threats = true, threatsX = 380, threatsY = 150,
+    stats = "raised", statsX = -390, statsY = -70,
     alerts = true, scale = 1,
     centerX = 0, centerY = 0,
     range = true, rangeYd = 8, range2 = false, range2Yd = 30, pickup = false, area = true,
@@ -675,12 +676,13 @@ end
 local function Help()
     Say("v" .. SL.version .. " commands (/slite or /sl):")
     Say("  (nothing) or options - open the options window")
-    Say("  unlock, lock - drag the hero bar, party, threat list and the circles' center")
+    Say("  unlock, lock - drag the hero bar, party, threat list, stats and the circles' center")
     for i = 1, table.getn(TOGGLE_ORDER) do
         local key = TOGGLE_ORDER[i]
         Say("  " .. key .. " [on|off] - " .. TOGGLES[key] .. " (" .. OnOff(SL.db[key]) .. ")")
     end
     Say("  buffs timed|all|off - which of your buffs to show (" .. SL.db.buffs .. ")")
+    Say("  stats raised|all|off - the run's numbers from the character pane: raised ones or all (" .. SL.db.stats .. ")")
     Say("  mobs bars|hide|show - plain enemy plates: small bars, hidden or the game's (" .. SL.db.mobs .. ")")
     Say("  leash 10-150 - guardians' leash radius in yards when not learned yet (" .. SL.db.leash .. ")")
     Say("  barscale 0.5-1.5 - size of the floating action bar (" .. SL.db.barScale .. ")")
@@ -758,6 +760,14 @@ local function Slash(msg)
         SL.db.buffs = rest
         SL.ApplyAll()
         Say("buffs: " .. rest)
+    elseif cmd == "stats" and (rest == "raised" or rest == "all" or rest == "off" or rest == "on" or rest == "") then
+        if rest == "on" then rest = "raised" end
+        if rest == "" then
+            if SL.db.stats == "off" then rest = "raised" else rest = "off" end
+        end
+        SL.db.stats = rest
+        SL.ApplyAll()
+        Say("stats: " .. rest)
     elseif cmd == "mobs" and (rest == "bars" or rest == "hide" or rest == "show") then
         SL.db.mobs = rest
         SL.ApplyAll()

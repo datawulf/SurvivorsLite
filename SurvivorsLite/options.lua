@@ -429,6 +429,9 @@ local function Build()
     Check(left, "Ring around you", "A class colored ring that marks you under tree tops.", get, set)
     get, set = Toggle("lowhp")
     Check(left, "Low health edge", "A red pulsing screen edge under 35% health.", get, set)
+    get, set = Toggle("stats")
+    Cycle(left, "The run's numbers from the character pane in a panel you can move. Raised shows the pane's twelve and the run stats something raised; all shows every one. Click to switch.",
+        { "raised", "all", "off" }, { raised = "Run stats: raised", all = "Run stats: all", off = "Run stats: off" }, get, set)
     get, set = Toggle("alerts")
     Check(left, "Warnings", "The next boss in its last 10 seconds and allies going down, over your character.", get, set)
 
@@ -520,7 +523,7 @@ local function Build()
         0.3, 1, 0.05, PctText, get, set)
 
     -- Bottom row.
-    local move = Button(panel, 120, "Move frames", "Drag the hero bar, action bar, party frames, status list and the circles' center (You).", function()
+    local move = Button(panel, 120, "Move frames", "Drag the hero bar, action bar, party frames, status list, run stats and the circles' center (You).", function()
         SL.SetLocked(not SL.locked)
         SL.ApplyAll()
     end)

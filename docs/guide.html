@@ -57,7 +57,8 @@
     <li>the SurvivorsLite button in the game menu (Esc)</li>
   </ul>
   <p>Every setting changes live and has a tooltip. Esc closes the window. "Move frames" lets
-  you drag the hero bar, action bar, party frames, status list and the circles' center.
+  you drag the hero bar, action bar, party frames, status list, run stats and the circles'
+  center.
   Reset asks for a second click.</p>
 
   <h2 id="jewelry">Picked jewelry</h2>
@@ -66,6 +67,17 @@
   A piece on cooldown shades from the top and counts its seconds. Point at one for its
   tooltip. With the floating bar off the row sits over the game's own bar.
   <code>/slite jewelry off</code> or "Picked jewelry" in the options hides it.</p>
+
+  <h2 id="stats">Run stats</h2>
+  <p>A small panel shows the numbers of the character pane while you play. The pane's
+  twelve always show: Health, Damage, Haste, Crit, Crit Dmg, Armor, Area, Targets, Echo,
+  Speed, Regen and Pickup. Under a thin line follow the rest of its run stats once
+  something raised them, such as Lifesteal, Lives or Vs Elites.
+  <code>/slite stats all</code> shows every one, <code>/slite stats off</code> none, and
+  "Run stats" in the options switches between them.</p>
+  <p>A number that just changed is green when it went up and red when it went down for
+  5 seconds, so you see what a level up pick did. Point at a row for what it means and
+  what your worn gear adds to it. Drag the panel with Move frames.</p>
 
   <h2 id="plates">Plates and the status list</h2>
   <ul>
@@ -182,11 +194,12 @@
   <div class="table"><table>
     <tr><th>Command</th><th>Effect</th></tr>
     <tr><td><code>/slite</code>, <code>/slite options</code></td><td>open or close the options window</td></tr>
-    <tr><td><code>/slite unlock</code>, <code>lock</code></td><td>drag the hero bar, action bar, party frames, status list and the circles' center</td></tr>
+    <tr><td><code>/slite unlock</code>, <code>lock</code></td><td>drag the hero bar, action bar, party frames, status list, run stats and the circles' center</td></tr>
     <tr><td><code>/slite hero on/off</code></td><td>hero bar with your health and auras</td></tr>
     <tr><td><code>/slite shield on/off</code></td><td>your shield on the health bar</td></tr>
     <tr><td><code>/slite uptime on/off</code></td><td>buff uptime under the aura icons</td></tr>
     <tr><td><code>/slite buffs timed/all/off</code></td><td>which buffs to show</td></tr>
+    <tr><td><code>/slite stats raised/all/off</code></td><td>run stats panel: the pane's twelve and raised run stats, every stat, or none</td></tr>
     <tr><td><code>/slite ring on/off</code></td><td>ring around your character</td></tr>
     <tr><td><code>/slite lowhp on/off</code></td><td>red screen edge at low health</td></tr>
     <tr><td><code>/slite bar on/off</code></td><td>floating action bar (off puts the game's bar back)</td></tr>

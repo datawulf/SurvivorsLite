@@ -777,6 +777,74 @@ expect(jewelry._shown, "jewelry on did not bring the row back")
 MOCK.worn = {}
 MOCK.event("UNIT_INVENTORY_CHANGED", "player")
 
+-- Run stats: the character pane's twelve numbers in a panel, then the run stats something
+-- raised under a thin line; a changed number shows green or red for a while.
+local statsFrame = SurvivorsLiteStats
+local function statCells()
+    local out = {}
+    for i = 1, table.getn(statsFrame._children) do
+        local c = statsFrame._children[i]
+        if c._shown and c.label and c.label._text then out[c.label._text] = c end
+    end
+    return out
+end
+local function statText(label)
+    local c = statCells()[label]
+    return c and c.value._text
+end
+local function statColor(label)
+    local c = statCells()[label]
+    return c and c.value._tc
+end
+MOCK.addon("AZSZONE", "len=900")
+MOCK.addon("AZS", "hp=2000;dmg=1.2;cd=0.9;crit=0.1;cm=1.5;arm=0.15;reg=1.5;area=1.25;cnt=1;echo=0.05;spd=1.1;pick=12;xp=1;luck=0;gold=1;heal=0;"
+    .. "ghp=150;gdmg=0.1;gcd=0;gcrit=0;gcm=0;garm=0;greg=0;garea=0;gcnt=0;gecho=0;gspd=0;gpick=0;ggold=0;"
+    .. "lch=0.05;thn=0;liv=2;bp=0;dots=1;doth=0;big=0.2;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
+MOCK.run(6, 60)
+expect(statsFrame._shown, "no run stats panel")
+local want = { Health = "2000", Damage = "+20%", Haste = "+10%", Crit = "10.0%", ["Crit Dmg"] = "150%", Armor = "15%",
+    Area = "+25%", Targets = "+1", Echo = "5%", Speed = "+10%", Regen = "1.5", Pickup = "12 yd",
+    Lifesteal = "5.0%", Lives = "2", ["Vs Elites"] = "+20%" }
+for label, text in pairs(want) do
+    expect(statText(label) == text, "run stat " .. label .. ": " .. tostring(statText(label)))
+end
+for _, label in ipairs({ "Kill Heal", "DoT Stacks", "Execute", "Experience", "Thorns" }) do
+    expect(not statText(label), "unraised run stat shows: " .. label)
+end
+local cellsNow = statCells()
+expect(cellsNow.Health._point[4] == 6 and cellsNow.Damage._point[4] == 124, "the main stats are not in two columns")
+expect(cellsNow.Lifesteal._point[4] == 6 and cellsNow.Lifesteal._point[5] == -90, "the run stats do not start on a line of their own")
+expect(statsFrame._h == 6 * 2 + 8 * 13 + 6, "run stats panel height: " .. tostring(statsFrame._h))
+MOCK.fire(cellsNow.Health, "OnEnter")
+expect(MOCK.tip == "Health 2000" and cellsNow.Health.slGear == "+150 health", "run stat tooltip: " .. tostring(MOCK.tip))
+expect(same(statColor("Damage"), { 1, 1, 1 }), "a number shows a change on its first line")
+-- An upgrade raises damage and a curse lowers armor.
+MOCK.addon("AZS", "hp=2000;dmg=1.3;cd=0.9;crit=0.1;cm=1.5;arm=0.1;reg=1.5;area=1.25;cnt=1;echo=0.05;spd=1.1;pick=12;xp=1;luck=0;gold=1;heal=0;"
+    .. "lch=0.05;thn=0;liv=2;bp=0;dots=1;doth=0;big=0.2;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
+MOCK.run(6, 60)
+expect(statText("Damage") == "+30%" and same(statColor("Damage"), { 0.4, 1, 0.4 }), "a raised number is not green")
+expect(statText("Armor") == "10%" and same(statColor("Armor"), { 1, 0.4, 0.4 }), "a lowered number is not red")
+expect(same(statColor("Health"), { 1, 1, 1 }), "an unchanged number changed color")
+MOCK.run(360, 60)
+expect(same(statColor("Damage"), { 1, 1, 1 }) and same(statColor("Armor"), { 1, 1, 1 }), "changed numbers stay colored")
+slash("stats all")
+expect(statText("Kill Heal") == "0" and statText("DoT Stacks") == "1" and statText("Pet Damage") == "+0%", "stats all does not show every run stat")
+slash("stats off")
+expect(not statsFrame._shown, "stats off left the panel")
+slash("stats")
+expect(SurvivorsLite.db.stats == "raised" and statsFrame._shown and not statText("Kill Heal"), "stats did not come back as raised")
+-- A new run starts lower: no red numbers for it.
+MOCK.addon("AZSZONE", "len=900")
+MOCK.addon("AZS", "hp=1000;dmg=1;cd=1;crit=0.05;cm=1.5;arm=0;reg=0;area=1;cnt=0;echo=0;spd=1;pick=8;xp=1;luck=0;gold=1;heal=0;"
+    .. "lch=0;thn=0;liv=0;bp=0;dots=1;doth=0;big=0;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
+MOCK.run(6, 60)
+expect(statText("Health") == "1000" and same(statColor("Health"), { 1, 1, 1 }), "a new run's numbers show as changes")
+expect(not statText("Lifesteal"), "unraised run stats after a new run")
+MOCK.addon("AZS", "hp=1100;dmg=1;cd=1;crit=0.05;cm=1.5;arm=0;reg=0;area=1;cnt=0;echo=0;spd=1;pick=8;xp=1;luck=0;gold=1;heal=0;"
+    .. "lch=0;thn=0;liv=0;bp=0;dots=1;doth=0;big=0;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
+MOCK.run(6, 60)
+expect(same(statColor("Health"), { 0.4, 1, 0.4 }), "the new run's second line shows no change")
+
 -- Alterac Valley: the game's layout pass cannot find MinimapCluster. No error window, and the
 -- chat dock and bags are still placed; any other error still comes through.
 local layoutRuns, docks, bags = MOCK.layoutRuns, MOCK.dockUpdates, MOCK.bagAnchors

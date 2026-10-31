@@ -233,7 +233,7 @@ def("SetText", TEXT, function(o, t)
     o._text = t and tostring(t) or nil
 end)
 def("GetText", TEXT, function(o) return o._text end)
-def("SetTextColor", FS, function(o, r, g, b) check(type(r) == "number" and type(g) == "number" and type(b) == "number", "text color") end)
+def("SetTextColor", FS, function(o, r, g, b) check(type(r) == "number" and type(g) == "number" and type(b) == "number", "text color"); o._tc = { r, g, b } end)
 def("SetShadowColor", FS, function(o) end)
 def("SetJustifyH", FS, function(o, j) check(j == "LEFT" or j == "CENTER" or j == "RIGHT", "justify") end)
 

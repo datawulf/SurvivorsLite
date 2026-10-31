@@ -32,6 +32,12 @@ Entertainment.
   - Plain enemies get a thin bar of their own health and nothing else (or no plate, or
     the game's plate).
   - Party members get a class colored plate with their level and a big arrow.
+- Run stats: the character pane's numbers in a small panel you can move. The pane's
+  twelve (Health, Damage, Haste, Crit, Crit Dmg, Armor, Area, Targets, Echo, Speed,
+  Regen, Pickup) always show, the rest of its run stats (Lifesteal, Lives, Vs Elites...)
+  once something raised them, or all of them. A number that just changed is green when
+  it went up and red when it went down for 5 seconds, so you see what a pick did. Point
+  at a row for what it means and what your worn gear adds.
 - Party frames: class colored health, level, damage per second, DOWN or revive
   progress, faded when out of range. Click a row to target.
 - Every guardian's lair has a look of its own, by its place in the run's lair line: a
@@ -127,6 +133,7 @@ Not confirmed in game yet:
 - The dragon head and chest icons on the minimap (1.8.0).
 - Minimap pins and lair distances in zones without a map such as Naxxramas, and the
   indoor minimap scale (1.8.1).
+- The run stats panel (1.9.0).
 
 Tried and not possible from an addon: see [Limits](#limits).
 
@@ -193,7 +200,7 @@ move only when the line comes. Moving the leash slider or
 | Command | Effect |
 | --- | --- |
 | `/slite` / `options` | open or close the options window |
-| `/slite unlock` / `lock` | drag the hero bar, action bar, party frames, status list and the circles' center |
+| `/slite unlock` / `lock` | drag the hero bar, action bar, party frames, status list, run stats and the circles' center |
 | `/slite hero on/off` | hero bar with your health and auras |
 | `/slite shield on/off` | your shield on the health bar |
 | `/slite uptime on/off` | buff uptime under the aura icons |
@@ -204,6 +211,7 @@ move only when the line comes. Moving the leash slider or
 | `/slite jewelry on/off` | your picked jewelry under the action bar |
 | `/slite cds on/off` | cooldown numbers and talent clocks |
 | `/slite buffs timed/all/off` | which buffs to show |
+| `/slite stats raised/all/off` | run stats panel: the pane's twelve and raised run stats, every stat, or none |
 | `/slite plates on/off` | boss and guardian plates |
 | `/slite mobs bars/hide/show` | plain enemies: small bars, hidden or the game's plates |
 | `/slite elites on/off` | mark elites too |

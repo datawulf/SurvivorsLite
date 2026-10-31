@@ -3,6 +3,15 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.9.0 - 2026-10-31
+
+- Run stats on the screen: the character pane's numbers in a small panel you can move.
+  The pane's twelve (Health, Damage, Haste, Crit, Crit Dmg, Armor, Area, Targets, Echo,
+  Speed, Regen, Pickup) always show, the rest of its run stats (Lifesteal, Lives, Vs
+  Elites...) once something raised them. A number that just changed shows green when it
+  went up and red when it went down for 5 seconds. Point at a row for what it means and
+  what your worn gear adds. `/slite stats raised|all|off`.
+
 ## 1.8.1 - 2026-10-31
 
 - Minimap pins and lair distances in zones without a map, like Naxxramas. There the game
