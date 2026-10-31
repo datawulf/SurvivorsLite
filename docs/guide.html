@@ -57,8 +57,8 @@
     <li>the SurvivorsLite button in the game menu (Esc)</li>
   </ul>
   <p>Every setting changes live and has a tooltip. Esc closes the window. "Move frames" lets
-  you drag the hero bar, action bar, party frames, status list, run stats and the circles'
-  center.
+  you drag the hero bar, action bar, party frames, status list, run stats, damage meter and
+  the circles' center.
   Reset asks for a second click.</p>
 
   <h2 id="jewelry">Picked jewelry</h2>
@@ -79,10 +79,28 @@
   5 seconds, so you see what a level up pick did. Point at a row for what it means and
   what your worn gear adds to it. Drag the panel with Move frames.</p>
 
+  <h2 id="meter">Damage meter</h2>
+  <p>A panel of bars shows your damage this run by spell, the top spell's bar the longest.
+  Each row has the spell's icon (from your action bar, the talents' clocks, your pets and
+  totems, or its place when none has one), its damage per second and its share of the
+  whole. The total per second sits in the header. Bars glide to their new length as the
+  run's meter updates. Point at a row for its damage, per second and share.</p>
+  <ul>
+    <li><strong>Damage</strong>: your spells this run.</li>
+    <li><strong>Party</strong>: each hero in a party in class colors with the class icon,
+    your own name in gold, their best spell on mouse over.</li>
+    <li><strong>Boss</strong>: your damage to bosses in the last boss fight.</li>
+    <li><strong>Heal</strong>: your healing by spell without overhealing, per second as hps.</li>
+  </ul>
+  <p><code>/slite rows 3-15</code> sets how many rows show (8 by default),
+  <code>/slite meter off</code> or "Damage meter" in the options hides it. Drag it with
+  Move frames. The game's own meter stays; turn it off in the game's options (Show Damage
+  Meter) if you only want this one.</p>
+
   <h2 id="plates">Plates and the status list</h2>
   <ul>
     <li>Final boss: magenta skull. Bosses: orange skull and "ENRAGED" when they enrage.
-    Guardians: their lair's dragon head with an edge in its color, dimmed while asleep.</li>
+    Guardians: their lair's dragon head in its color, dimmed while asleep.</li>
     <li>Bars show health in percent and as a number and your debuffs with stacks and time
     left.</li>
     <li>Where several units share a name (an elite pack mob named like a guardian) a plate
@@ -105,9 +123,9 @@
 
   <h2 id="lairs">Lairs and marks</h2>
   <p>Every guardian's lair has a look of its own by its place in the run's lair line: a
-  dragon head in a color of its own (red, blue, green, bronze, purple). The same icon and
-  color are on its minimap pin, its status line and its guardian's plate, so "the blue
-  one" is easy to find.</p>
+  dragon head in a color of its own (red, blue, green, bronze, purple), drawn for this
+  addon on a transparent background. The same look is on its minimap pin, its status line
+  and its guardian's plate, so "the blue one" is easy to find.</p>
   <ul>
     <li>Minimap pins: grey while the lair refills and a red "!" while its guardian is awake.
     A pin off the minimap sits on the edge and points the way.</li>
@@ -194,7 +212,7 @@
   <div class="table"><table>
     <tr><th>Command</th><th>Effect</th></tr>
     <tr><td><code>/slite</code>, <code>/slite options</code></td><td>open or close the options window</td></tr>
-    <tr><td><code>/slite unlock</code>, <code>lock</code></td><td>drag the hero bar, action bar, party frames, status list, run stats and the circles' center</td></tr>
+    <tr><td><code>/slite unlock</code>, <code>lock</code></td><td>drag the hero bar, action bar, party frames, status list, run stats, damage meter and the circles' center</td></tr>
     <tr><td><code>/slite hero on/off</code></td><td>hero bar with your health and auras</td></tr>
     <tr><td><code>/slite shield on/off</code></td><td>your shield on the health bar</td></tr>
     <tr><td><code>/slite uptime on/off</code></td><td>buff uptime under the aura icons</td></tr>
@@ -213,6 +231,8 @@
     <tr><td><code>/slite autoplates on/off</code></td><td>turn enemy plates on by itself</td></tr>
     <tr><td><code>/slite allies on/off</code></td><td>party member plates</td></tr>
     <tr><td><code>/slite party on/off</code></td><td>party frames</td></tr>
+    <tr><td><code>/slite meter on/off</code></td><td>damage meter</td></tr>
+    <tr><td><code>/slite rows 3-15</code></td><td>rows in the damage meter</td></tr>
     <tr><td><code>/slite threats on/off</code></td><td>boss status list</td></tr>
     <tr><td><code>/slite lairs on/off</code>, <code>chests on/off</code></td><td>lairs and chests on the minimap</td></tr>
     <tr><td><code>/slite leashring on/off</code></td><td>leash rings on the minimap</td></tr>

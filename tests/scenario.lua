@@ -74,6 +74,7 @@ end
 expect(boss._alpha == 1, "boss plate hidden")
 local bo = overlay(boss)
 expect(bo and bo._shown, "boss has no overlay")
+expect(bo.icon._w == 12 and bo.icon._h == 12, "boss skull not the smaller size: " .. tostring(bo.icon._w))
 expect(boss.mockBar._alpha == 0, "boss stock bar still visible")
 expect(guardian._alpha == 1 and overlay(guardian) and overlay(guardian)._shown, "guardian not highlighted")
 expect(not (overlay(elite) and overlay(elite)._shown), "elite marked while elites are off")
@@ -289,14 +290,21 @@ end
 local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4] end
 local ICON = SurvivorsLite.ICON
 local LOOKS = SurvivorsLite.LAIR_LOOKS
-local function wears(tex, n) return tex and tex._tex == LOOKS[n].icon end
-expect(wears(rowIcon("Mother Fang"), 4) and wears(rowIcon("Kobold Taskmaster"), 2) and wears(rowIcon("Rhahk'Zor"), 3), "status lines do not carry the lair icons")
-expect(LOOKS[4].icon ~= LOOKS[2].icon and LOOKS[2].icon ~= LOOKS[3].icon, "lairs share an icon")
+-- The addon's own transparent dragon, whole, tinted in the lair's color (greyed when `dim`).
+local function wears(tex, n, dim)
+    local c = LOOKS[n].color
+    local want = { c[1], c[2], c[3], 1 }
+    if dim then want = { 0.25 + c[1] * 0.3, 0.25 + c[2] * 0.3, 0.25 + c[3] * 0.3, 0.85 } end
+    return tex and tex._tex == SurvivorsLite.LAIR_ICON and same(tex._coords, { 0, 1, 0, 1 }) and same(tex._vc, want)
+end
+expect(string.find(SurvivorsLite.LAIR_ICON, "Interface\\AddOns\\SurvivorsLite\\media\\", 1, true) == 1, "lair icon is not the addon's own texture")
+expect(wears(rowIcon("Mother Fang"), 4) and wears(rowIcon("Kobold Taskmaster"), 2, true) and wears(rowIcon("Rhahk'Zor"), 3), "status lines do not carry the lair looks")
+expect(not same(LOOKS[4].color, LOOKS[2].color) and not same(LOOKS[2].color, LOOKS[3].color), "lairs share a color")
 local hoggerIcon = rowIcon("Hogger")
 expect(hoggerIcon and hoggerIcon._tex == SurvivorsLite.RAIDICONS and same(hoggerIcon._coords, ICON.skull), "boss line lost its skull")
 -- Mother Fang's plate wears the bronze head and its edge takes the lair's color.
 local mfIcon = overlay(plain[5]) and overlay(plain[5]).icon
-expect(wears(mfIcon, 4), "guardian plate does not wear its lair's icon")
+expect(wears(mfIcon, 4) and mfIcon._w == 16, "guardian plate does not wear its lair's icon")
 expect(same(overlay(plain[5]).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "guardian plate edge not in its lair's color")
 expect(lines["Edwin VanCleef"] and string.find(lines["Edwin VanCleef"], "^in "), "next boss line")
 
@@ -309,10 +317,10 @@ local function pinAt(x, y)
 end
 local heldPin = pinAt(0, 6)
 expect(heldPin and wears(heldPin.tex, 4), "no bronze pin for the lair 20 yd north")
-expect(heldPin and same(heldPin.edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "lair pin edge not in its color")
+expect(heldPin and heldPin.edge == nil and heldPin._w == 16, "lair pin still sits on a square")
 local nextPin = pinAt(15, 21)
 expect(nextPin and nextPin.tip2 and string.find(nextPin.tip2, "^Back in 0:4%d, 86 yd away. Comes back first."), "next lair pin tooltip: " .. tostring(nextPin and nextPin.tip2))
-expect(nextPin and wears(nextPin.tex, 2) and nextPin.glow._shown and nextPin._w == 17, "next lair pin not marked")
+expect(nextPin and wears(nextPin.tex, 2, true) and nextPin.glow._shown and nextPin._w == 20, "next lair pin not marked")
 expect(nextPin and string.find(nextPin.label._text or "", "^0:4%d$"), "next lair pin has no countdown")
 expect(heldPin and not heldPin.glow._shown, "a held lair glows")
 local farChest, nearChest = false, nil
@@ -323,7 +331,8 @@ for i = 1, table.getn(Minimap._children) do
     end
 end
 expect(not farChest, "a chest 300 yd away shows on the minimap")
-expect(nearChest and nearChest.tex._tex == SurvivorsLite.CHEST_ICON and pinAt(3, 9) == nearChest, "the chest 32 yd away has no chest pin")
+expect(nearChest and nearChest.tex._tex == SurvivorsLite.MEDIA .. "chest" and same(nearChest.tex._coords, { 0, 1, 0, 1 })
+    and nearChest._w == 14 and pinAt(3, 9) == nearChest, "the chest 32 yd away has no chest pin")
 Minimap:SetZoom(5)
 MOCK.run(6, 60)
 expect(pinAt(0, 21), "zoom did not scale the pins")
@@ -845,6 +854,86 @@ MOCK.addon("AZS", "hp=1100;dmg=1;cd=1;crit=0.05;cm=1.5;arm=0;reg=0;area=1;cnt=0;
 MOCK.run(6, 60)
 expect(same(statColor("Health"), { 0.4, 1, 0.4 }), "the new run's second line shows no change")
 
+-- Damage meter: the run's meter lines as bars, the longest the top line's, with icons from
+-- the action bar and the talents' clocks, a tab for each of the run's meters.
+local meter = SurvivorsLiteMeter
+local function meterRows()
+    local out = {}
+    for i = 1, table.getn(meter._children) do
+        local r = meter._children[i]
+        if r._shown and r.fill and r.name then table.insert(out, r) end
+    end
+    return out
+end
+local function meterText(pattern)
+    for i = 1, table.getn(meter._regions) do
+        local fs = meter._regions[i]
+        if fs._type == "FontString" and fs._shown and fs._text and string.find(fs._text, pattern) then return fs._text end
+    end
+end
+local function meterTab(label)
+    for i = 1, table.getn(meter._children) do
+        local b = meter._children[i]
+        if b.text and b.text._text == label then return b end
+    end
+end
+MOCK.addon("AZSTIMERS", "Ignite,Spell_Fire_Incinerate,cooldown,130,60")
+MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0;Ignite,15000,250,0.3,1;Rend,5000,83,0.1,0")
+MOCK.run(30, 60)
+local mrows = meterRows()
+expect(meter._shown and table.getn(mrows) == 3, "meter rows: " .. table.getn(mrows))
+expect(mrows[1].name._text == "Eviscerate" and mrows[1].value._text == "500  60%", "meter top row: " .. tostring(mrows[1].value._text))
+expect(mrows[2].value._text == "250  30%" and mrows[3].value._text == "83  10%", "meter shares")
+expect(meterText(" dps$") == "833 dps", "meter total: " .. tostring(meterText(" dps$")))
+expect(mrows[1].fill._w == 210 and mrows[2].fill._w == 105 and mrows[3].fill._w == 35, "meter bars not by the top line: "
+    .. tostring(mrows[1].fill._w) .. " " .. tostring(mrows[2].fill._w) .. " " .. tostring(mrows[3].fill._w))
+expect(mrows[1].fill._tex == SurvivorsLite.MEDIA .. "bar", "meter bars without their texture")
+expect(mrows[1].icon._shown and mrows[1].icon._tex == "Interface\\Icons\\Spell_Shadow_ShadowBolt", "action bar spell has no icon in the meter")
+expect(mrows[2].icon._shown and mrows[2].icon._tex == "Interface\\Icons\\Spell_Fire_Incinerate", "talent clock icon missing in the meter")
+expect(not mrows[3].icon._shown and mrows[3].rank._text == "3", "a spell without an icon shows no rank")
+local evisColor = mrows[1].fill._vc
+expect(not same(mrows[1].fill._vc, mrows[2].fill._vc) and not same(mrows[2].fill._vc, mrows[3].fill._vc), "meter rows share a color")
+MOCK.fire(mrows[1], "OnEnter")
+local tipText = table.concat(MOCK.tipLines or {}, ";")
+expect(MOCK.tip == "Eviscerate" and tipText == "Damage=30,000;Per second=500;Share=60%", "meter tooltip: " .. tipText)
+MOCK.fire(mrows[1], "OnLeave")
+-- A new line reorders them; a spell keeps its color and the bars glide there.
+MOCK.addon("AZSMETER", "Ignite,60000,700,0.6,1;Eviscerate,30000,350,0.3,0;Rend,5000,50,0.05,0;Blood Fury,4000,40,0.04,0;Hemorrhage,1000,10,0.01,0")
+MOCK.run(3, 60)
+mrows = meterRows()
+expect(table.getn(mrows) == 5 and mrows[2].name._text == "Eviscerate" and same(mrows[2].fill._vc, evisColor), "a spell changed its color")
+expect(mrows[3].fill._w > 18 and mrows[3].fill._w < 35, "meter bar jumped instead of gliding: " .. tostring(mrows[3].fill._w))
+MOCK.run(60, 60)
+expect(mrows[3].fill._w == 18 and mrows[2].fill._w == 105 and mrows[1].fill._w == 210, "meter bar did not arrive: " .. tostring(mrows[3].fill._w))
+slash("rows 3")
+expect(table.getn(meterRows()) == 3 and SurvivorsLite.db.meterRows == 3, "meter rows setting ignored")
+slash("rows 8")
+-- The party tab: a hero a row in class colors with the class icon, your own name in gold.
+MOCK.click(meterTab("Party"))
+MOCK.addon("AZSPARTY", "Ayla,mage,100000,1234,0.5,Fireball,200;Hero,warlock,60000,700,0.3,Shadow Bolt,500")
+MOCK.run(60, 60)
+mrows = meterRows()
+expect(SurvivorsLite.db.meterMode == "party" and table.getn(mrows) == 2 and mrows[1].name._text == "Ayla", "party tab")
+expect(same(mrows[1].fill._vc, { 0.41, 0.80, 0.94, 0.92 }) and mrows[1].icon._shown and mrows[1].icon._coords[2] == 0.49609375, "party row not in its class look")
+expect(same(mrows[2].name._tc, { 1, 0.82, 0 }) and mrows[2].fill._w == 126, "your own party row")
+MOCK.fire(mrows[2], "OnEnter")
+expect(table.concat(MOCK.tipLines, ";") == "Damage=60,000;Per second=700;Share=38%;Best spell=Shadow Bolt, 500 dps", "party tooltip: " .. table.concat(MOCK.tipLines, ";"))
+MOCK.fire(mrows[2], "OnLeave")
+-- An empty tab says so; healing counts per second as hps.
+MOCK.click(meterTab("Boss"))
+MOCK.run(15, 60)
+expect(table.getn(meterRows()) == 0 and meterText("^No boss fight yet%.$"), "empty boss tab")
+MOCK.click(meterTab("Heal"))
+MOCK.addon("AZSHEAL", "Drain Life,8000,90,1,0")
+MOCK.run(15, 60)
+expect(table.getn(meterRows()) == 1 and meterText(" hps$") == "90 hps", "healing tab: " .. tostring(meterText("ps$")))
+slash("meter off")
+expect(not meter._shown, "meter off left the meter")
+slash("meter on")
+MOCK.click(meterTab("Damage"))
+MOCK.run(15, 60)
+expect(meter._shown and SurvivorsLite.db.meterMode == "damage" and table.getn(meterRows()) == 5, "meter did not come back")
+
 -- Alterac Valley: the game's layout pass cannot find MinimapCluster. No error window, and the
 -- chat dock and bags are still placed; any other error still comes through.
 local layoutRuns, docks, bags = MOCK.layoutRuns, MOCK.dockUpdates, MOCK.bagAnchors
@@ -876,6 +965,7 @@ MOCK.onFrame = function(n)
     if math.mod(n, 6) == 0 then
         MOCK.addon("AZSUNITS", "boss,11,Hogger," .. (50000 - n) .. ",80000,1;guardian,12,Mother Fang,9000,10000,0")
         MOCK.addon("AZSTIMERS", "Cheat Death,Ability_Rogue_CheatDeath,cooldown,130,60")
+        MOCK.addon("AZSMETER", "Ignite," .. (60000 + n * 50) .. ",700,0.6,1;Eviscerate," .. (30000 + n * 90) .. ",350,0.3,0;Rend,5000,50,0.05,0")
         MOCK.event("PLAYER_AURAS_CHANGED")
         MOCK.event("UNIT_HEALTH", "player")
     end

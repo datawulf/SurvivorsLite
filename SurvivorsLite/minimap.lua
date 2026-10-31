@@ -1,5 +1,5 @@
--- Pins on the minimap: every guardian's lair (gold asleep, red awake, grey while it refills)
--- with a ring at its leash radius, and the chests. The run's lair and chest lines carry both
+-- Pins on the minimap: every guardian's lair (its dragon in the lair's color, "!" while
+-- awake, grey while it refills) with a ring at its leash radius, and the chests. The run's lair and chest lines carry both
 -- map and world coordinates, so the map's size in yards comes from them and your distance to
 -- a lair from your own map position. Where the zone has no map (Naxxramas and other
 -- instances) the run line's world position of your hero stands in; it moves only when the
@@ -20,7 +20,8 @@ local M = SL.Module({})
 -- 1.12's minimap shows this many yards across at zoom 0 to 5, outdoors and indoors.
 local OUTDOOR = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
 local INDOOR = { [0] = 300, 240, 180, 120, 80, 50 }
-local LAIR_SIZE, CHEST_SIZE = 13, 11
+-- The pins are transparent pictures with a margin, so a little larger than the old squares.
+local LAIR_SIZE, CHEST_SIZE = 16, 14
 local RING_SPACING = 5
 
 local lairPins, chestPins, rings = {}, {}, {}
@@ -223,11 +224,6 @@ local function NewPin(size, icon)
     f:SetFrameLevel(Minimap:GetFrameLevel() + 5)
     f:SetWidth(size)
     f:SetHeight(size)
-    -- A 1 px edge in the pin's color around its icon.
-    local edge = SL.Tex(f, "BORDER", 0, 0, 0, 1)
-    edge:SetPoint("TOPLEFT", f, "TOPLEFT", -1, 1)
-    edge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 1, -1)
-    f.edge = edge
     local t = f:CreateTexture(nil, "OVERLAY")
     SL.SetMark(t, icon)
     t:SetAllPoints(f)
@@ -378,8 +374,7 @@ local function Update(now)
                 local look = SL.LairLook(lair)
                 local f = lairPins[n] or NewPin(LAIR_SIZE, look.icon)
                 lairPins[n] = f
-                SL.SetMark(f.tex, look.icon)
-                local col = look.color
+                SL.SetLook(f.tex, look, lair.state == "empty")
                 local isNext = lair == nextLair
                 local size = LAIR_SIZE
                 if isNext then size = LAIR_SIZE + 4 end
@@ -394,9 +389,7 @@ local function Update(now)
                 local away = math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
                 local label = ""
                 if lair.state == "empty" then
-                    -- Dim while it refills; the next to come back glows and counts down.
-                    f.tex:SetVertexColor(0.45, 0.45, 0.45, 1)
-                    f.edge:SetVertexColor(col[1] * 0.5, col[2] * 0.5, col[3] * 0.5, 1)
+                    -- Grey while it refills; the next to come back glows and counts down.
                     local left = SL.LairLeft(lair)
                     if left then
                         label = SL.MinSec(left)
@@ -407,14 +400,10 @@ local function Update(now)
                     end
                     if isNext then f.label:SetTextColor(1, 0.82, 0.2) else f.label:SetTextColor(0.7, 0.7, 0.7) end
                 elseif awake[lair.id] then
-                    f.tex:SetVertexColor(1, 1, 1, 1)
-                    f.edge:SetVertexColor(col[1], col[2], col[3], 1)
                     label = "!"
                     f.label:SetTextColor(1, 0.3, 0.2)
                     f.tip2 = "Awake, " .. away
                 else
-                    f.tex:SetVertexColor(1, 1, 1, 1)
-                    f.edge:SetVertexColor(col[1], col[2], col[3], 1)
                     f.tip2 = "Asleep, " .. away
                 end
                 if f.labelText ~= label then

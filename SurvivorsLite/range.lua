@@ -200,10 +200,12 @@ local function Reach(text, best)
     return best
 end
 
--- Each skill's tooltip read in a hidden tooltip of our own: its name and its reach.
+-- Each skill's tooltip read in a hidden tooltip of our own: its name and its reach. Every
+-- named skill's icon goes to SL.spellIcons, for the damage meter.
 local function ScanSkills()
     if not scan then scan = CreateFrame("GameTooltip", "SurvivorsLiteScan", nil, "GameTooltipTemplate") end
     local out = {}
+    local icons = {}
     for i = 1, table.getn(SKILL_SLOTS) do
         local slot = SKILL_SLOTS[i]
         if HasAction(slot) then
@@ -223,6 +225,7 @@ local function ScanSkills()
                 end
                 if rt then best = Reach(rt, best) end
             end
+            if name then icons[name] = GetActionTexture(slot) end
             if name and best then
                 table.insert(out, { name = name, slot = slot, pos = i, yards = best.yards, kind = best.kind,
                     icon = GetActionTexture(slot) })
@@ -230,6 +233,7 @@ local function ScanSkills()
         end
     end
     scan:Hide()
+    SL.spellIcons = icons
     return out
 end
 

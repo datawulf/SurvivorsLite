@@ -327,8 +327,12 @@ function SetMapToCurrentZone() MOCK.mapSet = (MOCK.mapSet or 0) + 1 end
 -- A tooltip that checks its arguments.
 GameTooltip = {
     SetOwner = function(self, owner, anchor) check(type(owner) == "table" and type(anchor) == "string", "tooltip owner"); MOCK.tipOwner = owner end,
-    SetText = function(self, t, r, g, b) check(type(t) == "string", "tooltip text " .. type(t)); MOCK.tip = t end,
+    SetText = function(self, t, r, g, b) check(type(t) == "string", "tooltip text " .. type(t)); MOCK.tip = t; MOCK.tipLines = {} end,
     AddLine = function(self, t, r, g, b, wrap) check(type(t) == "string" and type(r) == "number", "tooltip line") end,
+    AddDoubleLine = function(self, l, r, lr, lg, lb, rr, rg, rb)
+        check(type(l) == "string" and type(r) == "string" and type(lr) == "number" and type(rb) == "number", "tooltip double line")
+        table.insert(MOCK.tipLines, l .. "=" .. r)
+    end,
     Show = function(self) MOCK.tipShown = true end,
     Hide = function(self) MOCK.tipShown = false end,
     SetInventoryItem = function(self, unit, id) check(unit == "player" and type(id) == "number", "tooltip inventory item"); MOCK.tipItem = id end,

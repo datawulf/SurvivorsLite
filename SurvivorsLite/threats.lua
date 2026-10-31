@@ -28,8 +28,8 @@ for i = 1, MAX_ROWS do
     r:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(i - 1) * ROW_H)
     local icon = r:CreateTexture(nil, "OVERLAY")
     icon:SetTexture(SL.RAIDICONS)
-    icon:SetWidth(12)
-    icon:SetHeight(12)
+    icon:SetWidth(13)
+    icon:SetHeight(13)
     icon:SetPoint("LEFT", r, "LEFT", 0, 0)
     local name = SL.Text(r, 10)
     name:SetPoint("LEFT", icon, "RIGHT", 3, 0)
@@ -61,13 +61,11 @@ local function Line(kind, name, status, sr, sg, sb, look)
     local r = rows[count]
     local col = COLOR[kind]
     if look then
-        SL.SetMark(r.icon, look.icon)
+        SL.SetLook(r.icon, look, kind == "empty")
         col = look.color
         if kind ~= "empty" then
-            r.icon:SetVertexColor(1, 1, 1, 1)
             r.name:SetTextColor(col[1], col[2], col[3])
         else
-            r.icon:SetVertexColor(0.45, 0.45, 0.45, 1)
             r.name:SetTextColor(col[1] * 0.7, col[2] * 0.7, col[3] * 0.7)
         end
     else

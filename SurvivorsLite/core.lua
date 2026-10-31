@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.9.0" }
+SurvivorsLite = { version = "1.10.0" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
@@ -13,6 +13,7 @@ SL.DEFAULTS = {
     allies = true, party = true, partyX = -360, partyY = 110,
     threats = true, threatsX = 380, threatsY = 150,
     stats = "raised", statsX = -390, statsY = -70,
+    meter = true, meterX = 390, meterY = -40, meterMode = "damage", meterRows = 8,
     alerts = true, scale = 1,
     centerX = 0, centerY = 0,
     range = true, rangeYd = 8, range2 = false, range2Yd = 30, pickup = false, area = true,
@@ -28,6 +29,8 @@ SL.BAR = "Interface\\TargetingFrame\\UI-StatusBar"
 SL.NUMFONT = "Fonts\\ARIALN.TTF"
 SL.FONT = "Fonts\\FRIZQT__.TTF"
 SL.RAIDICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
+-- The addon's own textures (tools/make_media.py draws them): BLP files with alpha.
+SL.MEDIA = "Interface\\AddOns\\SurvivorsLite\\media\\"
 
 -- Raid icon cells: star, circle, diamond, triangle, moon, square, cross, skull.
 SL.ICON = {
@@ -36,18 +39,18 @@ SL.ICON = {
     moon = { 0, 0.25, 0.25, 0.5 }, square = { 0.25, 0.5, 0.25, 0.5 },
     cross = { 0.5, 0.75, 0.25, 0.5 }, skull = { 0.75, 1, 0.25, 0.5 },
 }
--- Each guardian's lair has a look of its own, by its place in the run's lair line: a dragon
--- head in a color of its own, the same on its minimap pin, its status line and its
--- guardian's plate. The skull stays the bosses'.
-local DRAGON = "Interface\\Icons\\INV_Misc_Head_Dragon_"
+-- Each guardian's lair has a look of its own, by its place in the run's lair line: the
+-- dragon's head tinted in a color of its own, the same on its minimap pin, its status line
+-- and its guardian's plate. The skull stays the bosses'.
+SL.LAIR_ICON = SL.MEDIA .. "lair"
 SL.LAIR_LOOKS = {
-    { icon = DRAGON .. "Red", color = { 1, 0.35, 0.3 } },
-    { icon = DRAGON .. "Blue", color = { 0.35, 0.65, 1 } },
-    { icon = DRAGON .. "Green", color = { 0.35, 1, 0.45 } },
-    { icon = DRAGON .. "Bronze", color = { 1, 0.78, 0.25 } },
-    { icon = DRAGON .. "Black", color = { 0.75, 0.5, 1 } },
+    { icon = SL.LAIR_ICON, color = { 1, 0.35, 0.3 } },
+    { icon = SL.LAIR_ICON, color = { 0.35, 0.65, 1 } },
+    { icon = SL.LAIR_ICON, color = { 0.35, 1, 0.45 } },
+    { icon = SL.LAIR_ICON, color = { 1, 0.78, 0.25 } },
+    { icon = SL.LAIR_ICON, color = { 0.75, 0.5, 1 } },
 }
-SL.CHEST_ICON = "Interface\\Icons\\INV_Box_01"
+SL.CHEST_ICON = SL.MEDIA .. "chest"
 
 SL.CLASS = {
     WARRIOR = { 0.78, 0.61, 0.43 }, MAGE = { 0.41, 0.80, 0.94 },
@@ -321,8 +324,8 @@ function SL.LairLook(lair)
     return SL.LAIR_LOOKS[math.mod(math.max(i, 1) - 1, table.getn(SL.LAIR_LOOKS)) + 1]
 end
 
--- Puts a raid mark (by its name in SL.ICON) or a full icon (by path, its edge trimmed) on a
--- texture, only when it changes.
+-- Puts a raid mark (by its name in SL.ICON), one of the addon's own textures or a game icon
+-- (by path, its edge trimmed) on a texture, only when it changes.
 function SL.SetMark(tex, mark)
     if tex.slMark == mark then return end
     tex.slMark = mark
@@ -330,9 +333,42 @@ function SL.SetMark(tex, mark)
     if c then
         tex:SetTexture(SL.RAIDICONS)
         tex:SetTexCoord(c[1], c[2], c[3], c[4])
+    elseif string.find(mark, SL.MEDIA, 1, true) == 1 then
+        tex:SetTexture(mark)
+        tex:SetTexCoord(0, 1, 0, 1)
     else
         tex:SetTexture(mark)
         tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+end
+
+-- A lair's look on a texture: its dragon in the lair's color, greyed while it refills.
+function SL.SetLook(tex, look, dim)
+    SL.SetMark(tex, look.icon)
+    local c = look.color
+    if dim then
+        tex:SetVertexColor(0.25 + c[1] * 0.3, 0.25 + c[2] * 0.3, 0.25 + c[3] * 0.3, 0.85)
+    else
+        tex:SetVertexColor(c[1], c[2], c[3], 1)
+    end
+end
+
+-- A spell's icon by its name: from your action bar (range.lua reads its names), the
+-- talents' clocks, your pets and totems. Nil when none of them has it.
+SL.spellIcons = {}
+function SL.SpellIcon(name)
+    if not name then return nil end
+    local icon = SL.spellIcons[name]
+    if icon then return icon end
+    local lists = { AZS_TIMERS, AZS_PETS, AZS_TOTEMS }
+    for l = 1, 3 do
+        local list = lists[l]
+        if type(list) == "table" then
+            for i = 1, table.getn(list) do
+                local e = list[i]
+                if e.name == name and type(e.icon) == "string" and e.icon ~= "" then return SL.Icon(e.icon) end
+            end
+        end
     end
 end
 
@@ -621,7 +657,7 @@ SL.On("PLAYER_LOGIN", Load)
 -- ---------------------------------------------------------------- slash commands
 
 local TOGGLE_ORDER = { "hero", "shield", "uptime", "ring", "lowhp", "bar", "jewelry", "cds", "plates", "elites",
-    "debuffs", "autoplates", "allies", "party", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
+    "debuffs", "autoplates", "allies", "party", "meter", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
     "mapbutton", "range", "range2", "pickup", "area", "ground" }
 local TOGGLES = {
     hero = "hero bar with your health and buffs under your character",
@@ -638,6 +674,7 @@ local TOGGLES = {
     autoplates = "turn enemy name plates on by itself",
     allies = "ally plates with class colors and an arrow",
     party = "party frames with health, level and damage",
+    meter = "damage meter: your spells, the party, the last boss fight and your healing",
     threats = "boss and guardian status: up, respawn, leash",
     lairs = "guardians' lairs on the minimap",
     chests = "chests on the minimap",
@@ -661,6 +698,7 @@ local NUMBERS = {
     barscale = { key = "barScale", min = 0.5, max = 1.5 },
     leash = { key = "leash", min = 10, max = 150 },
     fov = { key = "fov", min = 30, max = 100 },
+    rows = { key = "meterRows", min = 3, max = 15 },
 }
 
 local function Say(msg)
@@ -676,13 +714,14 @@ end
 local function Help()
     Say("v" .. SL.version .. " commands (/slite or /sl):")
     Say("  (nothing) or options - open the options window")
-    Say("  unlock, lock - drag the hero bar, party, threat list, stats and the circles' center")
+    Say("  unlock, lock - drag the hero bar, party, threat list, stats, meter and the circles' center")
     for i = 1, table.getn(TOGGLE_ORDER) do
         local key = TOGGLE_ORDER[i]
         Say("  " .. key .. " [on|off] - " .. TOGGLES[key] .. " (" .. OnOff(SL.db[key]) .. ")")
     end
     Say("  buffs timed|all|off - which of your buffs to show (" .. SL.db.buffs .. ")")
     Say("  stats raised|all|off - the run's numbers from the character pane: raised ones or all (" .. SL.db.stats .. ")")
+    Say("  rows 3-15 - rows in the damage meter (" .. SL.db.meterRows .. ")")
     Say("  mobs bars|hide|show - plain enemy plates: small bars, hidden or the game's (" .. SL.db.mobs .. ")")
     Say("  leash 10-150 - guardians' leash radius in yards when not learned yet (" .. SL.db.leash .. ")")
     Say("  barscale 0.5-1.5 - size of the floating action bar (" .. SL.db.barScale .. ")")

@@ -1,8 +1,8 @@
 ## Interface: 11200
 ## Title: SurvivorsLite
-## Notes: Light HUD for Azeroth Survivors: hero bar with buffs and cooldowns, boss and guardian plates, ally plates, party frames, status list, run stats, minimap pins, floating action bar with your picked jewelry, skill and range circles. /slite
+## Notes: Light HUD for Azeroth Survivors: hero bar with buffs and cooldowns, boss and guardian plates, ally plates, party frames, damage meter, status list, run stats, minimap pins, floating action bar with your picked jewelry, skill and range circles. /slite
 ## Author: Muh
-## Version: 1.9.0
+## Version: 1.10.0
 ## SavedVariables: SurvivorsLiteDB
 
 core.lua
@@ -11,6 +11,7 @@ plates.lua
 party.lua
 threats.lua
 stats.lua
+meter.lua
 range.lua
 minimap.lua
 actionbar.lua

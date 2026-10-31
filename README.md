@@ -40,17 +40,23 @@ Entertainment.
   at a row for what it means and what your worn gear adds.
 - Party frames: class colored health, level, damage per second, DOWN or revive
   progress, faded when out of range. Click a row to target.
+- Damage meter: your damage by spell as bars with the spell's icon, its damage per
+  second and its share, the longest bar the top spell's. Tabs switch to the party's
+  heroes (class colors, your own name in gold, their best spell on mouse over), the last
+  boss fight and your healing. Bars glide to their new length. Point at a row for the
+  totals. `/slite rows 3-15` sets how many rows show. The game's own meter stays; turn it
+  off in the game's options (Show Damage Meter) if you only want this one.
 - Every guardian's lair has a look of its own, by its place in the run's lair line: a
-  dragon head in a color of its own (red, blue, green, bronze, purple). The same icon and
-  color are on its minimap pin, its line in the status list and its guardian's plate, so
-  you can tell the guardians apart at a glance.
+  dragon head in a color of its own (red, blue, green, bronze, purple), drawn for this
+  addon on a transparent background. The same look is on its minimap pin, its line in the
+  status list and its guardian's plate, so you can tell the guardians apart at a glance.
 - Boss status list, one short line each: bosses alive with their health, every
   guardian's lair (asleep with how far it is, awake with how far you are from its lair
   against its leash, or when it comes back) and the next boss. The lair that comes back
   first says "next" in gold with its countdown and how far it is. Lines whose unit has
   its plate up near you are bright.
-- Minimap: every guardian's lair under its dragon head with an edge in its color (dim
-  while it refills, "!" while its guardian is awake, kept on the edge when off the map), a
+- Minimap: every guardian's lair as its dragon head in its color (grey while it refills,
+  "!" while its guardian is awake, kept on the edge when off the map), a
   ring at the leash radius around each held lair, and the run's chests as small treasure
   chests. The lair that comes back first is bigger,
   glows gold and counts down under its pin, so you can head there before it fills.
@@ -130,10 +136,11 @@ Not confirmed in game yet:
 - The picked jewelry row under the action bar (1.8.0).
 - Area skills growing by your Area stat on top of their tooltip (1.8.0). If an area skill
   still hits farther than its circle, the game may count the enemy's body size too.
-- The dragon head and chest icons on the minimap (1.8.0).
 - Minimap pins and lair distances in zones without a map such as Naxxramas, and the
   indoor minimap scale (1.8.1).
 - The run stats panel (1.9.0).
+- The damage meter, the transparent dragon head and chest icons and the smaller boss
+  skull (1.10.0).
 
 Tried and not possible from an addon: see [Limits](#limits).
 
@@ -200,7 +207,7 @@ move only when the line comes. Moving the leash slider or
 | Command | Effect |
 | --- | --- |
 | `/slite` / `options` | open or close the options window |
-| `/slite unlock` / `lock` | drag the hero bar, action bar, party frames, status list, run stats and the circles' center |
+| `/slite unlock` / `lock` | drag the hero bar, action bar, party frames, status list, run stats, damage meter and the circles' center |
 | `/slite hero on/off` | hero bar with your health and auras |
 | `/slite shield on/off` | your shield on the health bar |
 | `/slite uptime on/off` | buff uptime under the aura icons |
@@ -219,6 +226,8 @@ move only when the line comes. Moving the leash slider or
 | `/slite autoplates on/off` | turn enemy plates on by itself |
 | `/slite allies on/off` | party member plates, turns friendly plates on in a party |
 | `/slite party on/off` | party frames |
+| `/slite meter on/off` | damage meter |
+| `/slite rows 3-15` | rows in the damage meter |
 | `/slite threats on/off` | boss status list |
 | `/slite lairs on/off` / `chests on/off` | lairs and chests on the minimap |
 | `/slite leashring on/off` | leash rings on the minimap |
@@ -303,6 +312,10 @@ python build.py
   ASCII, then plays through a run in a strict mock of the 1.12 frame API
   (`tests/mock.lua`, `tests/scenario.lua`).
 - `build.py` writes `dist/SurvivorsLite-<version>.zip` with the version from the `.toc`.
+- `tools/make_media.py` draws the addon's own textures into `SurvivorsLite/media` as BLP
+  files with 8 bits of alpha, like the game's own interface art: the lair's dragon head
+  (grey, tinted in each lair's color), the chest and the meter's bar. The client loads an
+  addon's textures only as BLP; TGA and PNG files show nothing there.
 - The addon is plain 1.12 Lua: `this`, `event` and `arg1` globals, `table.getn`,
   `math.mod`. `SurvivorsLite/core.lua` holds the module loader, settings, tickers and
   slash commands; each other file is one feature.

@@ -3,6 +3,18 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.10.0 - 2026-10-31
+
+- A damage meter: your damage by spell as bars with each spell's icon, damage per second
+  and share, the longest bar the top spell's. Tabs switch to the party's heroes in class
+  colors with their best spell, the last boss fight and your healing. Bars glide to their
+  new length; point at a row for its totals. `/slite meter on/off`, `/slite rows 3-15`.
+- The lair and chest icons are the addon's own pictures now, drawn on a transparent
+  background instead of square item icons: a dragon head tinted in each lair's color on
+  the minimap, in the status list and on the guardian's plate, and a chest on the
+  minimap. They come as BLP files in `media/`, which the zip now carries.
+- The skull on boss and final boss plates is smaller.
+
 ## 1.9.0 - 2026-10-31
 
 - Run stats on the screen: the character pane's numbers in a small panel you can move.

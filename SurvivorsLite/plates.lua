@@ -17,8 +17,8 @@ local M = SL.Module({})
 
 local RANK = { elite = 1, guardian = 2, boss = 3, final = 4 }
 local STYLE = {
-    final = { w = 150, h = 9, font = 12, icon = "skull", size = 18, edge = { 1, 0.2, 1 }, fill = { 0.85, 0.1, 0.1 } },
-    boss = { w = 130, h = 8, font = 11, icon = "skull", size = 16, edge = { 1, 0.35, 0.1 }, fill = { 0.85, 0.1, 0.1 } },
+    final = { w = 150, h = 9, font = 12, icon = "skull", size = 13, edge = { 1, 0.2, 1 }, fill = { 0.85, 0.1, 0.1 } },
+    boss = { w = 130, h = 8, font = 11, icon = "skull", size = 12, edge = { 1, 0.35, 0.1 }, fill = { 0.85, 0.1, 0.1 } },
     guardian = { w = 120, h = 7, font = 11, icon = "star", size = 14, edge = { 1, 0.82, 0.1 }, fill = { 0.95, 0.5, 0.05 } },
     elite = { w = 70, h = 5, font = 9, icon = "diamond", size = 10, edge = { 0.75, 0.8, 0.95 }, fill = { 0.75, 0.2, 0.15 } },
     ally = { w = 90, h = 6, font = 10, edge = { 1, 1, 1 } },
@@ -294,16 +294,20 @@ local function Style(d, kind, name)
     else
         o.fill:SetStatusBarColor(s.fill[1], s.fill[2], s.fill[3])
         -- A guardian wears its lair's icon and color, as on the minimap and in the status list.
-        local icon, edge = s.icon, s.edge
+        local edge, size = s.edge, s.size
         local lair = kind == "guardian" and d.match and SL.LairById(d.match.id)
         if lair then
+            -- The dragon picture has a clear margin, the raid marks fill their square.
             local look = SL.LairLook(lair)
-            icon, edge = look.icon, look.color
+            edge, size = look.color, s.size + 2
+            SL.SetLook(o.icon, look)
+        else
+            SL.SetMark(o.icon, s.icon)
+            o.icon:SetVertexColor(1, 1, 1, 1)
         end
         o.edge:SetVertexColor(edge[1], edge[2], edge[3], 1)
-        SL.SetMark(o.icon, icon)
-        o.icon:SetWidth(s.size)
-        o.icon:SetHeight(s.size)
+        o.icon:SetWidth(size)
+        o.icon:SetHeight(size)
         o.icon:Show()
         o.arrow:Hide()
         State(d, kind)
