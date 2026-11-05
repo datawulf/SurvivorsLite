@@ -5,7 +5,7 @@
 local SL = SurvivorsLite
 local M = SL.Module({})
 
-local W, H = 714, 592
+local W, H = 714, 624
 local CHECK_UP = "Interface\\Buttons\\UI-CheckBox-Up"
 local CHECK_MARK = "Interface\\Buttons\\UI-CheckBox-Check"
 local THUMB = "Interface\\Buttons\\UI-SliderBar-Button-Horizontal"
@@ -372,8 +372,8 @@ local function SkillsHint(col)
     table.insert(widgets, f)
 end
 
--- What the ground circles read from the camera, kept up to date while the window is open.
-local function CameraStatus(col)
+-- Where the ground circles measure from now, kept up to date while the window is open.
+local function WorldStatus(col)
     local f = CreateFrame("Frame", nil, panel)
     f:SetWidth(COL_W)
     f:SetHeight(24)
@@ -384,7 +384,7 @@ local function CameraStatus(col)
     fs:SetJustifyH("LEFT")
     fs:SetTextColor(0.7, 0.7, 0.7)
     f.Refresh = function()
-        if SL.CameraStatus then fs:SetText(SL.CameraStatus()) end
+        fs:SetText(SL.WorldStatus())
     end
     table.insert(widgets, f)
     col.y = col.y - 28
@@ -437,9 +437,11 @@ local function Build()
 
     Header(left, "Group")
     get, set = Toggle("party")
-    Check(left, "Party frames", "Health, level, damage per second and revive state. Click a row to target.", get, set)
+    Check(left, "Party frames", "Health, level, damage per second, revive state and how far away a downed friend is. Click a row to target.", get, set)
+    get, set = Toggle("downmark")
+    Check(left, "Mark downed friends", "A marker over the spot a party member fell, seen through walls, and a pin on the minimap that points the way.", get, set)
     get, set = Toggle("meter")
-    Check(left, "Damage meter", "Your damage by spell, the party's heroes, the last boss fight and your healing as bars, with tabs to switch. Point at a row for its numbers; /slite rows 3-15 sets how many show.", get, set)
+    Check(left, "Damage meter", "Your damage by spell, the party's heroes, the last boss fight and your healing as bars, with tabs to switch. Point at a row for its numbers; /slite rows 3-15 sets how many show and /slite window 5-120 makes the damage per second cover the last seconds.", get, set)
     get, set = Toggle("allies")
     Check(left, "Ally plates and arrows", "Class colored plates and an arrow over each party member.", get, set)
 
@@ -470,7 +472,7 @@ local function Build()
     get, set = Toggle("debuffs")
     Check(mid, "Debuffs on boss plates", "Your debuffs on bosses and guardians under their bar, with stacks and time left.", get, set)
     get, set = Toggle("autoplates")
-    Check(mid, "Turn plates on by itself", "Turns the game's enemy name plates on; the boss plates need them.", get, set)
+    Check(mid, "Turn plates on by itself", "Turns the game's enemy name plates on, for the plain enemies' bars. Boss and guardian plates do not need them.", get, set)
     get, set = Toggle("threats")
     Check(mid, "Boss status list", "Bosses alive, each guardian asleep, awake or when it comes back, and the next boss.", get, set)
 
@@ -511,18 +513,25 @@ local function Build()
     get, set = RangeSetting("pickup")
     Check(right, "Pickup radius", "A gold circle at the distance experience and gold fly to you from. Shows in a run.", get, set)
 
-    Header(right, "Camera")
+    Header(right, "Placement")
     get, set = RangeSetting("ground")
-    Check(right, "Circles on the ground", "Reads the camera's distance and angle (through saved view 5, put back at logout) and lays the circles on the ground around your feet in perspective, at any zoom.", get, set)
-    get, set = RangeSetting("fov")
-    Slider(right, "Field of view", "The camera's vertical field of view for ground circles. Match it once with Pickup radius: experience should start flying as it touches the gold circle.",
-        30, 100, 1, function(v) return v .. " deg" end, get, set)
-    CameraStatus(right)
+    Check(right, "On the ground", "The game places the circles on the ground around your feet at any zoom and angle, and the ring, hero bar and warnings on your feet. Off, they are flat on the screen with the sizes below.", get, set)
+    WorldStatus(right)
     get, set = RangeSetting("rangeZoom")
     Slider(right, "Size per yard (flat circles)", CALIBRATE, 5, 60, 0.5, ZoomText, get, set)
     get, set = RangeSetting("rangeTilt")
     Slider(right, "Height (flat circles)", "100% for a camera straight overhead, less when it looks in from the side. Only for flat circles.",
         0.3, 1, 0.05, PctText, get, set)
+
+    Header(right, "The game's own HUD")
+    get, set = Toggle("overcards")
+    Check(right, "Over the level-up cards", "Keeps the run stats, action bar, jewelry and damage meter on screen while you pick a card, with their tooltips.", get, set)
+    get, set = Toggle("hidemeter")
+    Check(right, "Hide the game's meter", "Hides the game's damage meter window and its minimap button while this addon's meter shows. Back at logout.", get, set)
+    get, set = Toggle("hidebosses")
+    Check(right, "Hide the game's boss bars", "Hides the game's boss and guardian health bars while this addon's plates or status list show. Back at logout.", get, set)
+    get, set = Toggle("hideflag")
+    Check(right, "Hide the game's lair flag", "Hides the minimap's red flag on the nearest lair while this addon's lair pins show. Back at logout.", get, set)
 
     -- Bottom row.
     local move = Button(panel, 120, "Move frames", "Drag the hero bar, action bar, party frames, status list, run stats, damage meter and the circles' center (You).", function()

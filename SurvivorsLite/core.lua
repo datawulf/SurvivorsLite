@@ -3,26 +3,27 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.10.0" }
+SurvivorsLite = { version = "1.11.0" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
-    hero = true, heroX = 0, heroY = -36,
+    hero = true, heroX = 0, heroY = -18,
     ring = true, lowhp = true, cds = true, buffs = "timed", uptime = true, shield = true,
     plates = true, autoplates = true, mobs = "bars", elites = false, debuffs = true,
-    allies = true, party = true, partyX = -360, partyY = 110,
+    allies = true, party = true, partyX = -360, partyY = 110, downmark = true,
     threats = true, threatsX = 380, threatsY = 150,
-    stats = "raised", statsX = -390, statsY = -70,
-    meter = true, meterX = 390, meterY = -40, meterMode = "damage", meterRows = 8,
+    stats = "raised", statsX = -480, statsY = -70,
+    meter = true, meterX = 492, meterY = -40, meterMode = "damage", meterRows = 8, meterWindow = 0,
     alerts = true, scale = 1,
     centerX = 0, centerY = 0,
     range = true, rangeYd = 8, range2 = false, range2Yd = 30, pickup = false, area = true,
-    rangeZoom = 23, rangeTilt = 1, ground = true, fov = 55,
+    rangeZoom = 23, rangeTilt = 1, ground = true,
     bar = true, barScale = 0.85, barX = 0, barY = 8, jewelry = true,
     lairs = true, chests = true, leashring = true, leashbar = true, leash = 40, mapbutton = true,
+    overcards = true, hidemeter = false, hidebosses = false, hideflag = false,
 }
 -- Saved settings older than this get the changed defaults below once.
-SL.SCHEMA = 2
+SL.SCHEMA = 3
 
 SL.WHITE = "Interface\\Buttons\\WHITE8X8"
 SL.BAR = "Interface\\TargetingFrame\\UI-StatusBar"
@@ -353,25 +354,6 @@ function SL.SetLook(tex, look, dim)
     end
 end
 
--- A spell's icon by its name: from your action bar (range.lua reads its names), the
--- talents' clocks, your pets and totems. Nil when none of them has it.
-SL.spellIcons = {}
-function SL.SpellIcon(name)
-    if not name then return nil end
-    local icon = SL.spellIcons[name]
-    if icon then return icon end
-    local lists = { AZS_TIMERS, AZS_PETS, AZS_TOTEMS }
-    for l = 1, 3 do
-        local list = lists[l]
-        if type(list) == "table" then
-            for i = 1, table.getn(list) do
-                local e = list[i]
-                if e.name == name and type(e.icon) == "string" and e.icon ~= "" then return SL.Icon(e.icon) end
-            end
-        end
-    end
-end
-
 function SL.LairById(id)
     local lairs = AZS_LAIRS
     if type(lairs) ~= "table" or id == nil then return nil end
@@ -532,18 +514,25 @@ end
 local movers = {}
 SL.locked = true
 
--- Where your character stands on screen. The ring and the range circles center on it; the
--- camera keeps you near the middle, and "You" in unlock mode fine tunes it.
+-- Where your character stands on screen. The ring and the range circles center on it. While
+-- the game can project your feet (world.lua) this follows them; otherwise the camera keeps you
+-- near the middle and "You" in unlock mode fine tunes it.
 SL.center = CreateFrame("Frame", "SurvivorsLiteCenter", UIParent)
 SL.center:SetWidth(28)
 SL.center:SetHeight(28)
 SL.center:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 
 -- Positions are offsets from the same point of UIParent: its center, or its bottom for
--- frames that belong at the screen's edge whatever its size.
+-- frames that belong at the screen's edge whatever its size. A frame that follows you is
+-- placed from your feet instead while the game can project them.
+local function Base(frame)
+    if frame.slFollow and SL.projected then return SL.center end
+    return UIParent
+end
+
 local function SavePosition(frame)
     local cx, cy = frame:GetCenter()
-    local ux, uy = UIParent:GetCenter()
+    local ux, uy = Base(frame):GetCenter()
     if not cx or not ux then return end
     local k = UIParent:GetEffectiveScale() / frame:GetEffectiveScale()
     local x = math.floor(cx - ux * k + 0.5)
@@ -561,7 +550,7 @@ end
 function SL.Place(frame)
     local p = frame.slPoint or "CENTER"
     frame:ClearAllPoints()
-    frame:SetPoint(p, UIParent, p, SL.db[frame.slKeyX] or 0, SL.db[frame.slKeyY] or 0)
+    frame:SetPoint(p, Base(frame), p, SL.db[frame.slKeyX] or 0, SL.db[frame.slKeyY] or 0)
 end
 
 -- A handle shown over the frame while unlocked; dragging it moves the frame.
@@ -589,6 +578,12 @@ function SL.Movable(frame, keyX, keyY, label, point)
     table.insert(movers, frame)
 end
 
+function SL.PlaceFollowers()
+    for i = 1, table.getn(movers) do
+        if movers[i].slFollow then SL.Place(movers[i]) end
+    end
+end
+
 function SL.SetLocked(locked)
     SL.locked = locked
     for i = 1, table.getn(movers) do
@@ -600,7 +595,7 @@ function SL.SetLocked(locked)
         else
             f:Show()
             f.slHandle:EnableMouse(true)
-            f.slHandle:Show()
+            if f.slNoHandle and f.slNoHandle() then f.slHandle:Hide() else f.slHandle:Show() end
         end
     end
 end
@@ -637,6 +632,16 @@ local function Load()
     local db = SurvivorsLiteDB
     -- 1.2.0: plain enemies get small bars instead of hiding.
     if (db.schema or 1) < 2 and db.mobs == "hide" then db.mobs = "bars" end
+    -- 1.11.0: the hero bar is placed from your feet instead of the screen's middle, and the
+    -- field of view is gone with the saved view camera.
+    if (db.schema or 1) < 3 then
+        if db.heroY == -36 then db.heroY = -18 end
+        db.fov = nil
+        -- The run stats and the meter stay over the level-up cards now, so their default
+        -- spots move out past the row of cards.
+        if db.statsX == -390 then db.statsX = -480 end
+        if db.meterX == 390 then db.meterX = 492 end
+    end
     db.schema = SL.SCHEMA
     for k, v in pairs(SL.DEFAULTS) do
         if db[k] == nil then db[k] = v end
@@ -657,8 +662,8 @@ SL.On("PLAYER_LOGIN", Load)
 -- ---------------------------------------------------------------- slash commands
 
 local TOGGLE_ORDER = { "hero", "shield", "uptime", "ring", "lowhp", "bar", "jewelry", "cds", "plates", "elites",
-    "debuffs", "autoplates", "allies", "party", "meter", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
-    "mapbutton", "range", "range2", "pickup", "area", "ground" }
+    "debuffs", "autoplates", "allies", "party", "downmark", "meter", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
+    "mapbutton", "range", "range2", "pickup", "area", "ground", "overcards", "hidemeter", "hidebosses", "hideflag" }
 local TOGGLES = {
     hero = "hero bar with your health and buffs under your character",
     shield = "your shield on the health bar and its amount",
@@ -671,9 +676,10 @@ local TOGGLES = {
     plates = "boss and guardian plates",
     elites = "mark elites too",
     debuffs = "your debuffs on boss and guardian plates",
-    autoplates = "turn enemy name plates on by itself",
+    autoplates = "turn enemy name plates on by itself, for the plain enemies' bars",
     allies = "ally plates with class colors and an arrow",
     party = "party frames with health, level and damage",
+    downmark = "a marker over a party member who is down, and a pin on the minimap",
     meter = "damage meter: your spells, the party, the last boss fight and your healing",
     threats = "boss and guardian status: up, respawn, leash",
     lairs = "guardians' lairs on the minimap",
@@ -686,7 +692,11 @@ local TOGGLES = {
     range2 = "second range circle, or set its radius: range2 30",
     pickup = "circle at your pickup radius",
     area = "grow the range circles and area skill circles with your Area stat",
-    ground = "circles on the ground from the live camera, when the client gives it",
+    ground = "circles on the ground and your ring on your feet, projected by the game",
+    overcards = "keep the run stats, action bar, jewelry and meter over the level-up cards",
+    hidemeter = "hide the game's own damage meter while this addon's shows",
+    hidebosses = "hide the game's own boss and guardian bars while this addon's show",
+    hideflag = "hide the game's red flag on the minimap while this addon's lair pins show",
 }
 -- Numbers some commands take, with their setting and limits.
 local NUMBERS = {
@@ -697,8 +707,8 @@ local NUMBERS = {
     scale = { key = "scale", min = 0.6, max = 2 },
     barscale = { key = "barScale", min = 0.5, max = 1.5 },
     leash = { key = "leash", min = 10, max = 150 },
-    fov = { key = "fov", min = 30, max = 100 },
     rows = { key = "meterRows", min = 3, max = 15 },
+    window = { key = "meterWindow", min = 0, max = 120 },
 }
 
 local function Say(msg)
@@ -722,14 +732,14 @@ local function Help()
     Say("  buffs timed|all|off - which of your buffs to show (" .. SL.db.buffs .. ")")
     Say("  stats raised|all|off - the run's numbers from the character pane: raised ones or all (" .. SL.db.stats .. ")")
     Say("  rows 3-15 - rows in the damage meter (" .. SL.db.meterRows .. ")")
+    Say("  window 0-120 - seconds the meter's damage per second covers, 0 for the whole run (" .. SL.db.meterWindow .. ")")
     Say("  mobs bars|hide|show - plain enemy plates: small bars, hidden or the game's (" .. SL.db.mobs .. ")")
     Say("  leash 10-150 - guardians' leash radius in yards when not learned yet (" .. SL.db.leash .. ")")
     Say("  barscale 0.5-1.5 - size of the floating action bar (" .. SL.db.barScale .. ")")
     Say("  skills - your skills with a reach; skill <name> - a circle at that skill's reach on or off")
-    Say("  camera - what the ground circles read from the camera")
-    Say("  fov 30-100 - the camera's field of view for ground circles (" .. SL.db.fov .. ")")
-    Say("  zoom 5-60 - circle size per yard, match it to your camera (" .. SL.db.rangeZoom .. ")")
-    Say("  tilt 0.3-1 - circle height for a tilted camera (" .. SL.db.rangeTilt .. ")")
+    Say("  world - where ground circles measure from now")
+    Say("  zoom 5-60 - flat circle size per yard, match it to your camera (" .. SL.db.rangeZoom .. ")")
+    Say("  tilt 0.3-1 - flat circle height for a tilted camera (" .. SL.db.rangeTilt .. ")")
     Say("  scale 0.6-2 - size of the hero bar, party and list (" .. SL.db.scale .. ")")
     Say("  perf - measure this addon's own cost for 10 seconds")
     Say("  reset - default settings and positions")
@@ -756,8 +766,8 @@ local function Slash(msg)
         else
             Say(cmd .. " takes a number from " .. n.min .. " to " .. n.max)
         end
-    elseif cmd == "camera" then
-        Say(SL.CameraStatus and SL.CameraStatus() or "no camera reader")
+    elseif cmd == "world" or cmd == "camera" then
+        Say(SL.WorldStatus())
     elseif cmd == "skills" then
         local skills = SL.skills or {}
         if table.getn(skills) == 0 then Say("no skill with a reach on your bar yet") end

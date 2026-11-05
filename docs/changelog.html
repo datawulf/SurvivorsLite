@@ -28,6 +28,23 @@
   is on the <a href="status.html">feature status</a> page. Downloads are on
   <a href="https://github.com/datawulf/SurvivorsLite/releases">GitHub Releases</a>.</p>
 
+  <h2 id="v1.11.0">1.11.0 <span class="note">2026-11-05</span></h2>
+  <p>SurvivorsLite now runs on the game's official addon API.</p>
+  <ul>
+    <li>Minimap pins, lair distances and the leash now use your live position on every map. They no longer move in steps in Naxxramas.</li>
+    <li>Damage meter now reads the game's meter API. Every source has its own icon and keeps its color through new ranks.</li>
+    <li>Added a Reset button to the meter. It counts from now on and the game's numbers stay as they are.</li>
+    <li>Added <code>/slite window 5-120</code> so damage per second can cover only the last seconds.</li>
+    <li>Range and skill circles now lie on the ground where the game itself puts them, at any zoom and angle. They need a lair, a chest or a fallen enemy to measure from and stay flat until then.</li>
+    <li>Removed the saved view camera, Field of view and <code>/slite fov</code>. <code>/slite world</code> says what the circles measure from.</li>
+    <li>Ring, hero bar and warnings now follow your feet. The "You" box is only for flat circles.</li>
+    <li>Boss and guardian plates now sit over the exact unit at its head. They no longer jump apart in crowds and work with name plates off.</li>
+    <li>Elites named like a guardian no longer get mixed up with it. Their own thin bars stay hidden while that guardian lives.</li>
+    <li>Run stats, action bar, jewelry and damage meter now stay over the level-up cards. <code>/slite overcards off</code> puts them back under.</li>
+    <li>Added options to hide the game's own meter, boss bars and lair flag while this addon replaces them. They come back at logout.</li>
+    <li>Party rows now say how far away a downed friend is. Added a marker on the spot and a minimap pin. <code>/slite downmark off</code> turns those off.</li>
+  </ul>
+
   <h2 id="v1.10.0">1.10.0 <span class="note">2026-10-31</span></h2>
   <ul>
     <li>A damage meter: your damage by spell as bars with each spell's icon, damage per

@@ -1,5 +1,8 @@
 -- Party frames: class colored health, level, damage per second from the run's meter,
--- down and revive state. Click a row to target that hero.
+-- down and revive state with how far away they fell. Click a row to target that hero.
+--
+-- The game's list of downed friends works at any distance on every map. Rows are joined to it
+-- by name, as party units have nothing else in common with it.
 
 local SL = SurvivorsLite
 local M = SL.Module({})
@@ -16,6 +19,10 @@ frame:Hide()
 local rows = {}
 local down = {}
 local dps = {}
+local downedByName = {}
+
+-- Everyone in your party who is down now, with where: read by markers.lua and minimap.lua.
+SL.downed = {}
 
 for i = 1, 4 do
     local unit = "party" .. i
@@ -59,7 +66,8 @@ local function UpdateRow(i)
     if max <= 0 then max = 1 end
     local f = cur / max
     if f > 1 then f = 1 elseif f < 0 then f = 0 end
-    local isDown = cur <= 0 or UnitIsDeadOrGhost(unit)
+    local fell = downedByName[name]
+    local isDown = fell or cur <= 0 or UnitIsDeadOrGhost(unit)
     if not UnitIsConnected(unit) then
         r.bar:SetValue(1)
         r.bar:SetStatusBarColor(0.3, 0.3, 0.3)
@@ -73,7 +81,11 @@ local function UpdateRow(i)
             r.pct:SetText("revive " .. math.floor(revive.rshare * 100) .. "%")
             r.pct:SetTextColor(0.4, 1, 0.4)
         else
-            r.pct:SetText("DOWN")
+            local text = "DOWN"
+            local dx, dy
+            if fell then dx, dy = SL.WorldOffset(fell) end
+            if dx then text = "DOWN " .. math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd" end
+            r.pct:SetText(text)
             r.pct:SetTextColor(1, 0.3, 0.3)
         end
         if not down[i] then
@@ -105,6 +117,25 @@ local function UpdateAll()
         frame:Hide()
     end
 end
+
+-- Reads the game's list. A list it cannot tell yet leaves the last one standing.
+local function ReadDowned()
+    if type(AZS_GetDownedPartyMembers) ~= "function" then return false end
+    local list = AZS_GetDownedPartyMembers()
+    if not list then return table.getn(SL.downed) > 0 end
+    local byName = {}
+    for i = 1, table.getn(list) do byName[list[i].name] = list[i] end
+    local changed = table.getn(list) ~= table.getn(SL.downed)
+    SL.downed, downedByName = list, byName
+    if changed and SL.WakeMinimap then SL.WakeMinimap() end
+    if SL.db.party then UpdateAll() end
+    return table.getn(list) > 0
+end
+
+-- Four times a second while someone is down, for the yards on their row.
+local downTicker = SL.Every(0.25, function()
+    if not ReadDowned() then return false end
+end, false)
 
 local function UnitIndex(unit)
     if type(unit) ~= "string" then return nil end
@@ -160,6 +191,9 @@ function M.init()
     SL.OnAzs("AZSREVIVE", function()
         if SL.db.party then UpdateAll() end
     end)
+    SL.OnAzs("AZSDOWNED", function() SL.Wake(downTicker) end)
+    SL.On("PLAYER_ENTERING_WORLD", function() SL.Wake(downTicker) end)
+    SL.On("PARTY_MEMBERS_CHANGED", function() SL.Wake(downTicker) end)
 end
 
 function M.apply()

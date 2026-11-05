@@ -409,6 +409,7 @@ local rebuildTicker = SL.Every(0.2, function()
 end, false)
 
 function M.init()
+    hud.slFollow = true
     SL.Movable(hud, "heroX", "heroY", "Hero")
     SL.On("PLAYER_ENTERING_WORLD", Refresh)
     SL.On("UNIT_HEALTH", function(unit) if unit == "player" then UpdateHealth() end end)

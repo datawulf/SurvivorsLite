@@ -1,9 +1,7 @@
 -- Pins on the minimap: every guardian's lair (its dragon in the lair's color, "!" while
--- awake, grey while it refills) with a ring at its leash radius, and the chests. The run's lair and chest lines carry both
--- map and world coordinates, so the map's size in yards comes from them and your distance to
--- a lair from your own map position. Where the zone has no map (Naxxramas and other
--- instances) the run line's world position of your hero stands in; it moves only when the
--- line comes, while the map position follows you every frame.
+-- awake, grey while it refills) with a ring at its leash radius, the chests and the party
+-- members who are down. Your live position and the run's lair and chest lines share one world
+-- space on every map, so distances are plain yards.
 --
 -- The leash is how far from its lair you can lead a guardian before it gives up and goes
 -- home. The client does not say, so it starts at the setting and is learned both ways:
@@ -21,104 +19,22 @@ local M = SL.Module({})
 local OUTDOOR = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
 local INDOOR = { [0] = 300, 240, 180, 120, 80, 50 }
 -- The pins are transparent pictures with a margin, so a little larger than the old squares.
-local LAIR_SIZE, CHEST_SIZE = 16, 14
+local LAIR_SIZE, CHEST_SIZE, DOWN_SIZE = 16, 14, 14
 local RING_SPACING = 5
 
-local lairPins, chestPins, rings = {}, {}, {}
-local scaleX, scaleY -- yards per map unit across and down
-local px, py         -- your map position
+local lairPins, chestPins, downPins, rings = {}, {}, {}, {}
 local awake = {}     -- lair id -> true while its guardian is awake
 local chase = {}     -- lair id -> { { t, d }, ... } while its guardian chases, not yet counted
 local warned = {}    -- lair id -> true once the leash warning showed for this chase
 local CONFIRM = 2    -- seconds a guardian must stay awake after a sample for it to count
-local lastSetMap     -- when the world map was last set to your zone
 local indoors, indoorsZoom, probedAt -- the minimap's indoor answer, for which zoom, and when
 local ticker
 
--- ---------------------------------------------------------------- map scale and position
+-- ---------------------------------------------------------------- distances
 
--- The slope of b over a across the points, and how straight a line they make (0 to 1).
-local function Fit(points, a, b)
-    local n = table.getn(points)
-    if n < 2 then return nil end
-    local sa, sb = 0, 0
-    for i = 1, n do
-        sa = sa + points[i][a]
-        sb = sb + points[i][b]
-    end
-    local ma, mb = sa / n, sb / n
-    local saa, sbb, sab = 0, 0, 0
-    for i = 1, n do
-        local da, db = points[i][a] - ma, points[i][b] - mb
-        saa = saa + da * da
-        sbb = sbb + db * db
-        sab = sab + da * db
-    end
-    if saa < 0.00000001 or sbb < 0.000001 then return nil end
-    return math.abs(sab / saa), math.abs(sab) / math.sqrt(saa * sbb)
-end
-
-local function Usable(s, r) return s and r > 0.98 and s > 100 and s < 50000 end
-
--- WoW's world x runs north and y west, the map's across east and down south; the other
--- pairing is tried too in case the run's lines use it.
-local function FitScale()
-    -- A scale left from the last zone would place this one's pins wrong.
-    scaleX, scaleY = nil, nil
-    local points = {}
-    local sources = { AZS_LAIRS, AZS_CHESTS }
-    for k = 1, 2 do
-        local src = sources[k]
-        if type(src) == "table" then
-            for i = 1, table.getn(src) do
-                local p = src[i]
-                if type(p.x) == "number" and type(p.y) == "number" and type(p.mx) == "number" and type(p.my) == "number" then
-                    table.insert(points, p)
-                end
-            end
-        end
-    end
-    local w, rw = Fit(points, "mx", "y")
-    local h, rh = Fit(points, "my", "x")
-    if Usable(w, rw) and Usable(h, rh) then
-        scaleX, scaleY = w, h
-        return
-    end
-    w, rw = Fit(points, "mx", "x")
-    h, rh = Fit(points, "my", "y")
-    if Usable(w, rw) and Usable(h, rh) then scaleX, scaleY = w, h end
-end
-
-local function PlayerPos()
-    -- The world map's zone is the player's to pick while it is open.
-    if WorldMapFrame and WorldMapFrame:IsVisible() then return px, py end
-    local x, y = GetPlayerMapPosition("player")
-    -- A zone without a map reads 0, 0 for good, so the map is set to it only now and then.
-    local now = GetTime()
-    if (not x or (x == 0 and y == 0)) and SetMapToCurrentZone and not (lastSetMap and now - lastSetMap < 5) then
-        lastSetMap = now
-        SetMapToCurrentZone()
-        x, y = GetPlayerMapPosition("player")
-    end
-    if x and not (x == 0 and y == 0) then px, py = x, y end
-    return px, py
-end
-
--- Yards east and south from you to a point, nil while unknown.
-local function Offset(p)
-    if scaleX and px and type(p.mx) == "number" and type(p.my) == "number" then
-        return (p.mx - px) * scaleX, (p.my - py) * scaleY
-    end
-    -- WoW's world x runs north and y west, in yards.
-    local run = AZS_RUN
-    if type(run) == "table" and type(run.px) == "number" and type(run.py) == "number"
-        and type(p.x) == "number" and type(p.y) == "number" then
-        return run.py - p.y, run.px - p.x
-    end
-end
+local Offset = SL.WorldOffset
 
 function SL.LairDistance(lair)
-    if not px then PlayerPos() end
     local dx, dy = Offset(lair)
     if not dx then return nil end
     return math.sqrt(dx * dx + dy * dy)
@@ -349,9 +265,10 @@ end
 
 local function Update(now)
     local db = SL.db
-    PlayerPos()
     local chasing = Leash(now or GetTime())
-    if not Minimap or not (db.lairs or db.chests) then
+    local downed = db.downmark and SL.downed or {}
+    local anyDown = table.getn(downed) > 0
+    if not Minimap or not (db.lairs or db.chests or anyDown) then
         if not chasing then return false end
         return
     end
@@ -451,7 +368,22 @@ local function Update(now)
         end
     end
     for i = m + 1, table.getn(chestPins) do chestPins[i]:Hide() end
-    if n == 0 and m == 0 and not chasing then return false end
+    -- A friend who is down: kept on the edge when off the map, so it points the way.
+    local k = 0
+    for i = 1, table.getn(downed) do
+        local d = downed[i]
+        local dx, dy = Offset(d)
+        if dx then
+            k = k + 1
+            local f = downPins[k] or NewPin(DOWN_SIZE, "cross")
+            downPins[k] = f
+            f.tip = tostring(d.name or "?")
+            f.tip2 = "Down, " .. math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
+            Place(f, dx * ppy, -dy * ppy, radius, true)
+        end
+    end
+    for i = k + 1, table.getn(downPins) do downPins[i]:Hide() end
+    if n == 0 and m == 0 and k == 0 and not chasing then return false end
 end
 
 ticker = SL.Every(0.1, Update, false)
@@ -488,7 +420,6 @@ local function UnitsChanged()
 end
 
 local function PointsChanged()
-    FitScale()
     UnitsChanged()
     SL.Wake(ticker)
 end
@@ -498,28 +429,30 @@ function M.init()
     SL.OnAzs("AZSCHESTS", PointsChanged)
     SL.OnAzs("AZSUNITS", UnitsChanged)
     SL.On("PLAYER_ENTERING_WORLD", function()
-        px, py, lastSetMap, indoorsZoom = nil, nil, nil, nil
-        if SetMapToCurrentZone and not (WorldMapFrame and WorldMapFrame:IsVisible()) then SetMapToCurrentZone() end
+        indoorsZoom = nil
         PointsChanged()
     end)
-    SL.On("ZONE_CHANGED_NEW_AREA", function()
-        px, py, lastSetMap = nil, nil, nil
-        ForgetIndoors()
-    end)
+    SL.On("ZONE_CHANGED_NEW_AREA", ForgetIndoors)
     SL.On("ZONE_CHANGED", ForgetIndoors)
     SL.On("ZONE_CHANGED_INDOORS", ForgetIndoors)
     SL.On("MINIMAP_UPDATE_ZOOM", ZoomChanged)
 end
 
+-- Party members going down or up wake the pins.
+function SL.WakeMinimap()
+    SL.Wake(ticker)
+end
+
 function M.apply()
     if not SL.db.leashbar then ShowLeash(nil) end
-    if not (SL.db.lairs or SL.db.chests or SL.db.leashbar) then
+    if not (SL.db.lairs or SL.db.chests or SL.db.leashbar or SL.db.downmark) then
         ticker.active = false
         for i = 1, table.getn(lairPins) do
             lairPins[i]:Hide()
             rings[i]:Hide()
         end
         for i = 1, table.getn(chestPins) do chestPins[i]:Hide() end
+        for i = 1, table.getn(downPins) do downPins[i]:Hide() end
         return
     end
     SL.Wake(ticker)

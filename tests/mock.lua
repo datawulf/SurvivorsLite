@@ -125,6 +125,7 @@ def("GetPoint", ANY, function(o, i)
     if p and p[1] ~= "ALL" then return p[1], p[2], p[3], p[4], p[5] end
 end)
 def("GetBottom", ANY, function(o) return 10 end)
+def("GetLeft", ANY, function(o) return 0 end)
 def("SetParent", FRAMES, function(o, parent)
     check(type(parent) == "table", "SetParent frame")
     local old = o._parent
@@ -289,22 +290,12 @@ function UIParent_ManageFramePositions()
     updateContainerFrameAnchors()
 end
 
--- Settings and the camera's saved views. Until MOCK.camera is set, SaveView changes
--- nothing, like a client whose views do not follow the live camera.
-MOCK.cvars = { cameraDistanceD = "13.88", cameraPitchD = "10.0", cameraYawD = "0.0" }
+-- Settings.
+MOCK.cvars = {}
 function GetCVar(k) check(type(k) == "string", "GetCVar name"); return MOCK.cvars[k] end
 function SetCVar(k, v) check(type(k) == "string" and v ~= nil, "SetCVar"); MOCK.cvars[k] = tostring(v) end
-function SaveView(n)
-    check(n == 5, "SaveView view " .. tostring(n))
-    if MOCK.camera then
-        MOCK.cvars.cameraDistanceD = tostring(MOCK.camera.d)
-        MOCK.cvars.cameraPitchD = tostring(MOCK.camera.p)
-    end
-end
-function CameraZoomIn(v) if MOCK.camera then MOCK.camera.d = MOCK.camera.d - v end end
-function CameraZoomOut(v) if MOCK.camera then MOCK.camera.d = MOCK.camera.d + v end end
 
--- The minimap and the world map position.
+-- The minimap.
 Minimap = CreateFrame("Frame", "Minimap", UIParent)
 Minimap._w, Minimap._h = 140, 140
 -- Zoom 0 to 5 in two settings, one for outdoors and one for indoors (MOCK.indoors); SetZoom
@@ -318,11 +309,6 @@ Minimap.SetZoom = function(self, z)
     MOCK.zoom, MOCK.zoomSets = z, MOCK.zoomSets + 1
     if MOCK.indoors then MOCK.cvars.minimapInsideZoom = tostring(z) else MOCK.cvars.minimapZoom = tostring(z) end
 end
-WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
-WorldMapFrame:Hide()
-MOCK.mapX, MOCK.mapY = 0, 0
-function GetPlayerMapPosition(unit) check(unit == "player", "map position unit"); return MOCK.mapX, MOCK.mapY end
-function SetMapToCurrentZone() MOCK.mapSet = (MOCK.mapSet or 0) + 1 end
 
 -- A tooltip that checks its arguments.
 GameTooltip = {
@@ -434,6 +420,12 @@ function MOCK.run(frames, fps)
             local o = MOCK.frames[i]
             if o._scripts and o._scripts.OnUpdate and o._shown then fire(o, "OnUpdate", dt) end
         end
+        -- The world frame comes after every OnUpdate, once the camera moved.
+        if AZS_WorldAnchorFrame then
+            MOCK.inWorldFrame = true
+            AZS_WorldAnchorFrame()
+            MOCK.inWorldFrame = false
+        end
         if MOCK.onFrame then MOCK.onFrame(n) end
     end
 end
@@ -463,4 +455,292 @@ function MOCK.plate(name, r, g, b, value)
     bar:SetStatusBarColor(r, g, b)
     p.mockName, p.mockBar = fsName, bar
     return p
+end
+
+-- ---------------------------------------------------------------- the game's native calls
+
+-- What the game does in Rust, as its addon doc states it: your position, the world anchors
+-- and the meter API. The game's own Lua in azs_api.lua calls the AZS_Native* ones.
+
+MOCK.pos = { x = 980, y = 2000, z = 0, facing = 0 }
+MOCK.world = 1024
+-- A pinhole camera that follows your hero and looks north, down at p degrees, d yards from a
+-- point 1.5 yards over your feet. fov is vertical.
+MOCK.cam = { d = 30, p = 60, fov = 55 }
+MOCK.unitPos = {}  -- unit id -> { x, y, z }
+MOCK.fallen = {}   -- entries of enemies that fell, kept where they fell
+MOCK.sampleId = 0
+
+function geterrorhandler()
+    return function(err) table.insert(MOCK.chat, "error from a frame handler: " .. tostring(err)) end
+end
+
+local function nativeErr(code, retry)
+    return nil, { code = code, message = code, retryable = retry and true or false, retryAfterSeconds = retry }
+end
+
+local function currentSpace()
+    local run = AZS_ZONE and AZS_ZONE.run
+    if type(run) ~= "string" or run == "" then run = nil end
+    return AZS_SpaceOf(AZS_ZONE and AZS_ZONE.map, run), AZS_ZONE and AZS_ZONE.map, run
+end
+
+function AZS_GetPlayerPosition(a1)
+    check(a1 == nil, "AZS_GetPlayerPosition takes nothing")
+    if MOCK.noPosition then return nativeErr(MOCK.noPosition, 0.2) end
+    local space, map, run = currentSpace()
+    local p = MOCK.pos
+    return { apiVersion = 1, mapId = map, spaceId = space, sampleId = tostring(MOCK.now), runId = run,
+        x = p.x, y = p.y, z = p.z, facing = p.facing }, nil
+end
+
+-- Screen place of a world point: x, y from WorldFrame's bottom left, and its depth.
+function MOCK.project(wx, wy, wz)
+    local c = MOCK.cam
+    local east, north, up = MOCK.pos.y - wy, wx - MOCK.pos.x, wz - MOCK.pos.z - 1.5
+    local a = math.rad(c.p)
+    local sp, cp = math.sin(a), math.cos(a)
+    local depth = north * cp - up * sp + c.d
+    if depth <= 0 then return nil, nil, depth end
+    local half = 384
+    local f = half * math.cos(math.rad(c.fov / 2)) / math.sin(math.rad(c.fov / 2))
+    return 512 + f * east / depth, half + f * (north * sp + up * cp) / depth, depth, f
+end
+
+local catalog = { list = {}, id = "", stream = "s1" }
+local UNIT_KIND = { final = "finalBoss", boss = "boss", guardian = "guardian", elite = "elite" }
+local LAIR_STATE = { held = "asleep", awake = "awake", asleep = "asleep", empty = "empty" }
+
+local function stamp(e, x, y, z)
+    local space, map, run = currentSpace()
+    e.x, e.y, e.z, e.positionAvailable = x, y, z, true
+    e.mapId, e.spaceId, e.runId = map, space, run
+    return e
+end
+
+-- The game hears the run's lines here, each time they change once anybody asked.
+function AZS_NativeWorldAnchorSync(lines)
+    check(type(lines) == "table", "anchor sync lines")
+    local list = {}
+    for i = 1, table.getn(lines.lairs) do
+        local l = lines.lairs[i]
+        table.insert(list, stamp({ anchorId = "L" .. l.index, kind = "guardianLair", state = LAIR_STATE[l.state] or "empty",
+            lairIndex = l.index, name = l.name, attachments = { "position" } }, l.x, l.y, l.z))
+    end
+    for i = 1, table.getn(lines.chests) do
+        local c = lines.chests[i]
+        table.insert(list, stamp({ anchorId = "C" .. c.id, kind = "cache", state = "present", cacheId = c.id,
+            attachments = { "position" } }, c.x, c.y, c.z))
+    end
+    for i = 1, table.getn(lines.units) do
+        local u = lines.units[i]
+        local at = MOCK.unitPos[u.id] or { x = MOCK.pos.x + 10, y = MOCK.pos.y, z = 0 }
+        MOCK.unitPos[u.id] = at
+        table.insert(list, stamp({ anchorId = "U" .. u.id, kind = UNIT_KIND[u.kind], state = "alive", unitId = u.id,
+            name = u.name, attachments = { "position", "overhead" } }, at.x, at.y, at.z))
+    end
+    for i = 1, table.getn(lines.downed) do
+        local d = lines.downed[i]
+        d.anchorId, d.anchorStatus = "D" .. tostring(d.id), "ready"
+        table.insert(list, stamp({ anchorId = d.anchorId, kind = "downedPartyMember", state = "downed", memberId = d.id,
+            name = d.name, attachments = { "position" } }, d.x, d.y, d.z))
+    end
+    for i = 1, table.getn(MOCK.fallen) do table.insert(list, MOCK.fallen[i]) end
+    local id = ""
+    for i = 1, table.getn(list) do id = id .. list[i].anchorId .. list[i].state .. ";" end
+    catalog.list, catalog.id = list, id
+    return catalog.stream
+end
+
+function AZS_NativeWorldAnchorStream() return catalog.stream end
+
+function AZS_NativeWorldAnchorUnit(id) return "U" .. tostring(id) end
+
+local ENEMIES = { enemy = true, elite = true, guardian = true, boss = true, finalBoss = true }
+
+local function has(list, v)
+    if not list then return true end
+    for i = 1, table.getn(list) do
+        if list[i] == v then return true end
+    end
+    return false
+end
+
+function AZS_NativeWorldAnchorQuery(query, cursor, limit, now)
+    check(query == nil or type(query) == "table", "anchor query")
+    check(cursor == nil or type(cursor) == "string", "anchor cursor")
+    if query then
+        for k in pairs(query) do check(k == "kinds" or k == "states", "unknown anchor query key " .. tostring(k)) end
+    end
+    -- The first time anyone asks for enemies the scan starts: try next frame.
+    local wantsEnemies = not query or not query.kinds
+    if query and query.kinds then
+        for i = 1, table.getn(query.kinds) do
+            if ENEMIES[query.kinds[i]] then wantsEnemies = true end
+        end
+    end
+    if wantsEnemies and not MOCK.enemyScan then
+        MOCK.enemyScan = true
+        return nativeErr("NOT_READY", 0.2)
+    end
+    AZS_NativeWorldAnchorSync({ lairs = AZS_LAIRS, chests = AZS_CHESTS, units = AZS_UNITS, downed = AZS_DOWNED })
+    local entries = {}
+    for i = 1, table.getn(catalog.list) do
+        local e = catalog.list[i]
+        if has(query and query.kinds, e.kind) and has(query and query.states, e.state) then
+            local copy = {}
+            for k, v in pairs(e) do copy[k] = v end
+            table.insert(entries, copy)
+        end
+    end
+    return { apiVersion = 1, catalogId = catalog.id, worldId = "w1", streamId = catalog.stream, clockSeconds = now,
+        entries = entries, hasMore = false, overflowed = false }, nil
+end
+
+function AZS_NativeWorldAnchorProject(requests, now, seat)
+    check(type(requests) == "table" and table.getn(requests) <= 256, "projection requests")
+    check(type(seat) == "table" and type(seat.scale) == "number", "projection seat")
+    local entries = {}
+    for i = 1, table.getn(requests) do
+        local r = requests[i]
+        for k in pairs(r) do check(k == "anchorId" or k == "attachment" or k == "offset", "unknown request key " .. tostring(k)) end
+        check(type(r.anchorId) == "string", "request anchorId")
+        check(r.attachment == "position" or r.attachment == "overhead", "request attachment " .. tostring(r.attachment))
+        local found
+        for j = 1, table.getn(catalog.list) do
+            if catalog.list[j].anchorId == r.anchorId then found = catalog.list[j] end
+        end
+        local out = { anchorId = r.anchorId, attachment = r.attachment }
+        if not found then
+            out.state, out.reason = "expired", "removed"
+        else
+            out.entityState = found.state
+            local at = found
+            if found.unitId and MOCK.unitPos[found.unitId] and found.state == "alive" then at = MOCK.unitPos[found.unitId] end
+            local z = at.z
+            if r.attachment == "overhead" then z = z + 2.5 end
+            local o = r.offset or {}
+            for k, v in pairs(o) do check((k == "x" or k == "y" or k == "z") and type(v) == "number", "offset " .. tostring(k)) end
+            local x, y, depth, f = MOCK.project(at.x + (o.x or 0), at.y + (o.y or 0), z + (o.z or 0))
+            if not x then
+                out.state = "behindCamera"
+            elseif x < 0 or x > 1024 or y < 0 or y > 768 then
+                out.state = "offscreen"
+            else
+                out.state = "onScreen"
+                out.x, out.y, out.cameraDepth, out.cameraDistance, out.uiUnitsPerYard = x, y, depth, depth, f / depth
+                local dx, dy, dz = at.x - MOCK.pos.x, at.y - MOCK.pos.y, z - MOCK.pos.z
+                out.playerDistance = math.sqrt(dx * dx + dy * dy + dz * dz)
+            end
+        end
+        entries[i] = out
+    end
+    return { apiVersion = 1, worldId = "w1", streamId = catalog.stream, cameraSampleId = tostring(now), clockSeconds = now,
+        frameCurrent = MOCK.inWorldFrame and true or false, entries = entries }, nil
+end
+
+-- ---- the meter API: tables of rows per tab, set by MOCK.meterSet.
+
+MOCK.meter = { rev = 0, run = "r1", tabs = { damage = {}, party = {}, boss = {}, healing = {} }, owners = {}, checkpoints = {} }
+
+function MOCK.meterSet(tab, rows)
+    MOCK.meter.tabs[tab] = rows
+    MOCK.meter.rev = MOCK.meter.rev + 1
+end
+
+local function meterContext()
+    return { apiVersion = 1, runId = MOCK.meter.run, counterRevision = "c" .. MOCK.meter.rev, metadataRevision = "m1",
+        phase = "playing", localOwnerId = "H1", partyState = "solo", uiSessionId = "ui1" }
+end
+
+function AZS_GetMeterContext()
+    if MOCK.meter.down then return nativeErr(MOCK.meter.down, 0.2) end
+    return meterContext(), nil
+end
+
+local QUERY_KEYS = { apiVersion = 1, runId = 1, metric = 1, healingPerspective = 1, scope = 1, ownerId = 1, period = 1,
+    groupBy = 1, windowSeconds = 1, checkpointId = 1 }
+
+function AZS_GetMeterSnapshot(q)
+    if type(q) ~= "table" then return nativeErr("INVALID_ARGUMENT") end
+    for k in pairs(q) do
+        if not QUERY_KEYS[k] then return nativeErr("INVALID_ARGUMENT") end
+    end
+    if q.apiVersion ~= 1 then return nativeErr("UNSUPPORTED_VERSION") end
+    local w = q.windowSeconds
+    if type(w) ~= "number" or math.floor(w) ~= w or (w ~= 0 and (w < 5 or w > 120)) then return nativeErr("INVALID_ARGUMENT") end
+    if (q.scope == "owner") ~= (q.ownerId ~= nil) then return nativeErr("INVALID_ARGUMENT") end
+    if MOCK.meter.down then return nativeErr(MOCK.meter.down, 0.2) end
+    if q.runId ~= MOCK.meter.run then return nativeErr("RUN_MISMATCH") end
+    local rows
+    if q.scope == "owner" then
+        rows = MOCK.meter.owners[q.ownerId] or {}
+    elseif q.metric == "healing" then
+        rows = MOCK.meter.tabs.healing
+    elseif q.scope == "party" then
+        rows = MOCK.meter.tabs.party
+        if table.getn(rows) == 0 then return nativeErr("NO_PARTY", 1) end
+    elseif q.period == "encounter" then
+        rows = MOCK.meter.tabs.boss
+        if table.getn(rows) == 0 then return nativeErr("NO_ENCOUNTER", 0.2) end
+    else
+        rows = MOCK.meter.tabs.damage
+    end
+    local base = {}
+    if q.checkpointId then
+        base = MOCK.meter.checkpoints[q.checkpointId]
+        if not base then return nativeErr("CHECKPOINT_EXPIRED") end
+    end
+    local out, sources, actors = {}, {}, {}
+    local sum, rate = 0, 0
+    for i = 1, table.getn(rows) do
+        local r = rows[i]
+        local amount = r.amount - (base[r.key] or 0)
+        if amount > 0 then
+            sum = sum + amount
+            rate = rate + r.rate
+            local recent = { status = "not_requested" }
+            local display = { status = "ready", value = r.rate }
+            if w > 0 then
+                recent = { status = r.recent and "ready" or "warming_up", value = r.recent }
+                if r.recent then display = recent end
+            end
+            local row = { rowId = r.key, rank = i, displayAmount = amount, periodAmount = r.amount,
+                periodAverage = { status = "ready", value = r.rate }, recentRate = recent, displayRate = display }
+            if q.groupBy == "owner" then
+                row.ownerId = r.key
+                actors[r.key] = { actorId = r.key, kind = "hero", name = r.name, classKey = r.class }
+            else
+                row.sourceKey = r.key
+                local icon = { status = "missing", reason = "none" }
+                if r.icon then icon = { status = "ready", path = r.icon } end
+                sources[r.key] = { sourceKey = r.key, name = r.name, icon = icon, abilityKey = r.ability, kind = "ability" }
+            end
+            table.insert(out, row)
+        end
+    end
+    for i = 1, table.getn(out) do
+        out[i].share = sum > 0 and out[i].displayAmount / sum or 0
+    end
+    table.sort(out, function(a, b) return a.displayAmount > b.displayAmount end)
+    return { apiVersion = 1, status = table.getn(out) > 0 and "ready" or "ready_empty", complete = true, context = meterContext(),
+        query = q, rows = out, sources = sources, actors = actors,
+        totals = { displayAmount = sum, periodAmount = sum, periodAverage = { status = "ready", value = rate }, displayRate = { status = "ready", value = rate } } }, nil
+end
+
+function AZS_CreateMeterCheckpoint(runId)
+    if runId ~= MOCK.meter.run then return nativeErr("RUN_MISMATCH") end
+    MOCK.meter.count = (MOCK.meter.count or 0) + 1
+    local id = "cp" .. MOCK.meter.count
+    local base = {}
+    for _, rows in pairs(MOCK.meter.tabs) do
+        for i = 1, table.getn(rows) do base[rows[i].key] = rows[i].amount end
+    end
+    MOCK.meter.checkpoints[id] = base
+    return { checkpointId = id, runId = runId }, nil
+end
+
+function AZS_ReleaseMeterCheckpoint(id)
+    MOCK.meter.checkpoints[id] = nil
+    return true, nil
 end

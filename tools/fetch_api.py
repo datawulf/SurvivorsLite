@@ -22,7 +22,11 @@ PARSE_START = b"-- Azeroth Survivors: the run's numbers on the character pane"
 PARSE_END = b"\treturn t;\nend\n"
 # The client writes the HUD settings into this placeholder when it boots.
 HUD_PLACEHOLDER = "{ HUD_CVARS_LUA }"
-HUD_FILLED = '{ clock = "hudClock", bosses = "hudBosses" }'
+HUD_FILLED = (
+    '{ clock = "hudClock", bosses = "hudBosses", tally = "hudTally", build = "hudBuild", '
+    'banners = "hudBanners", loot = "hudLoot", meter = "hudMeter", levels = "hudLevels", '
+    'flag = "hudFlag", revive = "hudRevive", localClock = "hudLocalClock" }'
+)
 
 here = os.path.dirname(os.path.abspath(__file__))
 out_path = os.path.join(here, "..", "tests", "azs_api.lua")

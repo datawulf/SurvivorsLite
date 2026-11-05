@@ -16,4 +16,4 @@ labels: bug
 
 **Chat lines** starting with "SurvivorsLite error", if any:
 
-**For circles:** what `/slite camera` says.
+**For circles:** what `/slite world` says.

@@ -3,6 +3,34 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.11.0 - 2026-11-05
+
+SurvivorsLite now runs on the game's official addon API.
+
+- Minimap pins, lair distances and the leash now use your live position on every map. They
+  no longer move in steps in Naxxramas.
+- Damage meter now reads the game's meter API. Every source has its own icon and keeps its
+  color through new ranks.
+- Added a Reset button to the meter. It counts from now on and the game's numbers stay as
+  they are.
+- Added `/slite window 5-120` so damage per second can cover only the last seconds.
+- Range and skill circles now lie on the ground where the game itself puts them, at any zoom
+  and angle. They need a lair, a chest or a fallen enemy to measure from and stay flat until
+  then.
+- Removed the saved view camera, Field of view and `/slite fov`. `/slite world` says what
+  the circles measure from.
+- Ring, hero bar and warnings now follow your feet. The "You" box is only for flat circles.
+- Boss and guardian plates now sit over the exact unit at its head. They no longer jump
+  apart in crowds and work with name plates off.
+- Elites named like a guardian no longer get mixed up with it. Their own thin bars stay
+  hidden while that guardian lives.
+- Run stats, action bar, jewelry and damage meter now stay over the level-up cards. `/slite
+  overcards off` puts them back under.
+- Added options to hide the game's own meter, boss bars and lair flag while this addon
+  replaces them. They come back at logout.
+- Party rows now say how far away a downed friend is. Added a marker on the spot and a
+  minimap pin. `/slite downmark off` turns those off.
+
 ## 1.10.0 - 2026-10-31
 
 - A damage meter: your damage by spell as bars with each spell's icon, damage per second

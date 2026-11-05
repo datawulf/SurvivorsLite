@@ -1,17 +1,15 @@
 -- Range circles around your character: one or two radii you pick in yards, grown by your
--- Area stat, your pickup radius and your skills' reach. The client has no call that maps the
--- world to the screen. With the camera read from its saved view settings they are projected
--- onto flat ground around your feet; without, they are flat on the screen around the spot
--- marked as your character, sized by a yards to screen factor you match to your zoom once.
--- Each circle is a ring of small dots: the line stays sharp at any size, and the dots only
--- move when a radius, the zoom factor or the screen changes.
+-- Area stat, your pickup radius and your skills' reach. While the game can project the ground
+-- around your feet (world.lua) they lie on it; otherwise they are flat on the screen around
+-- the spot marked as your character, sized by a yards to screen factor you match to your zoom
+-- once. Each circle is a ring of small dots: the line stays sharp at any size, and the dots
+-- only move when a radius, the view or the screen changes.
 
 local SL = SurvivorsLite
 local M = SL.Module({})
 
 local REF_HEIGHT = 768 -- rangeZoom counts screen units per yard on a 768 unit tall screen
 local SPACING = 8
-local camTicker
 
 local function NewCircle(r, g, b, a, dot, labelBelow)
     local c = SL.NewRing(UIParent, r, g, b, a, dot, 24, 120)
@@ -35,106 +33,60 @@ local function Yards(v)
     return string.format("%.1f yd", v)
 end
 
--- ---------------------------------------------------------------- the live camera
+-- ---------------------------------------------------------------- laying the dots out
 
--- The client tells addons nothing about its camera, but 1.12's saved views do: SaveView(5)
--- writes the camera's distance and pitch into the cameraDistanceD and cameraPitchD settings.
--- Read back, they place the circles on the ground in perspective. View 5's own values are
--- put back at logout. Until the settings ever show a live camera, circles stay flat.
-local TARGET_HEIGHT = 1.5 -- yards from your feet up to the point the camera orbits
-local cam = { live = false }
-local saved             -- view 5 as you had it
-local hotUntil, lastRead = 0, 0
-
-local function ReadCamera()
-    if type(SaveView) ~= "function" or type(GetCVar) ~= "function" then return false end
-    if not saved then
-        saved = { GetCVar("cameraDistanceD"), GetCVar("cameraPitchD"), GetCVar("cameraYawD") }
-        cam.startD, cam.startP = tonumber(saved[1]), tonumber(saved[2])
-    end
-    SaveView(5)
-    local d, p = tonumber(GetCVar("cameraDistanceD")), tonumber(GetCVar("cameraPitchD"))
-    if not d or not p or d <= 0 then return false end
-    -- Live once the view ever differs from what it held before the first save.
-    if not cam.live and (d ~= cam.startD or p ~= cam.startP) then cam.live = true end
-    local changed = d ~= cam.d or p ~= cam.p
-    cam.d, cam.p = d, p
-    return changed
-end
-
-local function RestoreView()
-    if saved and type(SetCVar) == "function" then
-        if saved[1] then SetCVar("cameraDistanceD", saved[1]) end
-        if saved[2] then SetCVar("cameraPitchD", saved[2]) end
-        if saved[3] then SetCVar("cameraYawD", saved[3]) end
-    end
-end
-
--- Whether circles lie on the ground now.
-local function Ground()
-    return SL.db.ground and cam.live and cam.d and cam.p
-end
-
--- Screen units per unit of view depth: half the screen's height over tan of half the
--- vertical field of view.
-local function Focal(screenH)
-    local s, c = SL.SinCosDeg(SL.db.fov / 2)
-    return (screenH / 2) * c / s
-end
-
--- A circle of `yards` around your feet as the camera sees flat ground: each dot projected
--- through a camera `cam.d` yards from the point above your feet, looking down at cam.p.
-local function LayoutGround(c, yards, screenH)
-    local f = Focal(screenH)
-    local sp, cp = SL.SinCosDeg(cam.p)
-    local d, h = cam.d, TARGET_HEIGHT
+-- A circle of `yards` around your feet, each dot where the game puts that spot of ground.
+local function LayoutGround(c, yards)
     local top, bottom = -10000, 10000
-    local n = math.floor(2 * math.pi * yards * f / (d + h) / SPACING)
+    local n = math.floor(2 * math.pi * yards * SL.GroundPerYard() / SPACING)
     SL.LayoutDots(c, n, function(t)
         local ux, uy = SL.Turn(t)
-        local x, y = ux * yards, uy * yards
-        local z = y * cp + d + h * sp
-        if z < 0.3 then return nil end
-        local sx, sy = f * x / z, f * (y * sp - h * cp) / z
-        if sy > top then top = sy end
-        if sy < bottom then bottom = sy end
-        return sx, sy
+        local x, y = SL.GroundPoint(ux * yards, uy * yards)
+        if not x or math.abs(x) > 4000 or math.abs(y) > 4000 then return nil end
+        if y > top then top = y end
+        if y < bottom then bottom = y end
+        return x, y
     end)
     return top, bottom
 end
 
 -- Lays the dots out again only when the circle's size on screen changed.
-local function Draw(c, yards, text)
+local function Layout(c)
     local db = SL.db
+    local yards = c.yards
     local h = UIParent:GetHeight()
     if not h or h <= 0 then h = REF_HEIGHT end
     local key
-    if Ground() then
-        key = string.format("g%.2f;%.2f;%.1f;%.1f;%d", yards, cam.d, cam.p, db.fov, h)
+    if SL.GroundReady() then
+        key = string.format("g%.2f;%d", yards, SL.groundVersion)
     else
         key = string.format("f%.1f;%.2f;%.2f;%d", yards, db.rangeZoom, db.rangeTilt, h)
     end
-    if c.key ~= key then
-        c.key = key
-        c.label:ClearAllPoints()
-        if Ground() then
-            local top, bottom = LayoutGround(c, yards, h)
-            if c.below then
-                c.label:SetPoint("TOP", c, "CENTER", 0, bottom - 3)
-            else
-                c.label:SetPoint("BOTTOM", c, "CENTER", 0, top + 3)
-            end
+    if c.key == key then return end
+    c.key = key
+    c.label:ClearAllPoints()
+    if SL.GroundReady() then
+        local top, bottom = LayoutGround(c, yards)
+        if c.below then
+            c.label:SetPoint("TOP", c, "CENTER", 0, bottom - 3)
         else
-            local radius = yards * db.rangeZoom * h / REF_HEIGHT
-            local tilt = db.rangeTilt
-            SL.LayoutRing(c, radius, tilt, SPACING)
-            if c.below then
-                c.label:SetPoint("TOP", c, "CENTER", 0, -radius * tilt - 3)
-            else
-                c.label:SetPoint("BOTTOM", c, "CENTER", 0, radius * tilt + 3)
-            end
+            c.label:SetPoint("BOTTOM", c, "CENTER", 0, top + 3)
+        end
+    else
+        local radius = yards * db.rangeZoom * h / REF_HEIGHT
+        local tilt = db.rangeTilt
+        SL.LayoutRing(c, radius, tilt, SPACING)
+        if c.below then
+            c.label:SetPoint("TOP", c, "CENTER", 0, -radius * tilt - 3)
+        else
+            c.label:SetPoint("BOTTOM", c, "CENTER", 0, radius * tilt + 3)
         end
     end
+end
+
+local function Draw(c, yards, text)
+    c.yards = yards
+    Layout(c)
     if c.text ~= text then
         c.text = text
         c.label:SetText(text)
@@ -200,12 +152,10 @@ local function Reach(text, best)
     return best
 end
 
--- Each skill's tooltip read in a hidden tooltip of our own: its name and its reach. Every
--- named skill's icon goes to SL.spellIcons, for the damage meter.
+-- Each skill's tooltip read in a hidden tooltip of our own: its name and its reach.
 local function ScanSkills()
     if not scan then scan = CreateFrame("GameTooltip", "SurvivorsLiteScan", nil, "GameTooltipTemplate") end
     local out = {}
-    local icons = {}
     for i = 1, table.getn(SKILL_SLOTS) do
         local slot = SKILL_SLOTS[i]
         if HasAction(slot) then
@@ -225,7 +175,6 @@ local function ScanSkills()
                 end
                 if rt then best = Reach(rt, best) end
             end
-            if name then icons[name] = GetActionTexture(slot) end
             if name and best then
                 table.insert(out, { name = name, slot = slot, pos = i, yards = best.yards, kind = best.kind,
                     icon = GetActionTexture(slot) })
@@ -233,7 +182,6 @@ local function ScanSkills()
         end
     end
     scan:Hide()
-    SL.spellIcons = icons
     return out
 end
 
@@ -298,7 +246,7 @@ end
 
 function M.apply()
     local db = SL.db
-    SL.Place(SL.center)
+    if not SL.projected then SL.Place(SL.center) end
     if skillsDirty then Rescan() end
     local picked = db.skillRings or {}
     local drawn = {}
@@ -341,7 +289,7 @@ function M.apply()
         if c:IsShown() then any = true end
     end
     M.anyShown = any
-    if any and db.ground then SL.Wake(camTicker) end
+    SL.NeedGround(any)
 end
 SL.ApplyRange = function() SL.Run(M.apply) end
 
@@ -358,40 +306,6 @@ local function SkillsChanged()
 end
 
 local spellSig, areaSeen = nil, nil
-
--- The camera is read twice a second, and ten times a second for a while after it moved or
--- the wheel zoomed, only while a circle shows.
-camTicker = SL.Every(0.1, function(now)
-    if not (SL.db.ground and M.anyShown) then return false end
-    if now < hotUntil or now - lastRead >= 0.5 then
-        lastRead = now
-        local wasLive = cam.live
-        if ReadCamera() then
-            hotUntil = now + 1
-            if cam.live then M.apply() end
-        end
-        if cam.live ~= wasLive and SL.RefreshOptions then SL.RefreshOptions() end
-    end
-end, false)
-
-function SL.CameraStatus()
-    if not SL.db.ground then return "Ground circles are off." end
-    if cam.live then
-        return string.format("Camera read: %.1f yd away, looking down %.0f deg.", cam.d, cam.p)
-    end
-    if type(SaveView) ~= "function" then return "This client has no SaveView: circles stay flat." end
-    return "Waiting for the camera: zoom or turn it once. Until then circles are flat."
-end
-
-local function HookZoom(name)
-    local orig = getglobal(name)
-    if type(orig) ~= "function" then return end
-    setglobal(name, function(a1, a2)
-        orig(a1, a2)
-        hotUntil = GetTime() + 1.5
-        SL.Wake(camTicker)
-    end)
-end
 
 function M.init()
     SL.Movable(SL.center, "centerX", "centerY", "You")
@@ -418,8 +332,11 @@ function M.init()
     SL.On("ACTIONBAR_SLOT_CHANGED", SkillsChanged)
     SL.On("PLAYER_ENTERING_WORLD", SkillsChanged)
     SL.On("DISPLAY_SIZE_CHANGED", M.apply)
-    -- The mouse wheel zooms through these bindings; each turn reads the camera at once.
-    HookZoom("CameraZoomIn")
-    HookZoom("CameraZoomOut")
-    SL.On("PLAYER_LOGOUT", RestoreView)
+    -- The view changed: every circle showing lies on the ground anew.
+    SL.OnGroundChanged(function()
+        for i = 1, table.getn(M.circles) do
+            local c = M.circles[i]
+            if c:IsShown() then Layout(c) end
+        end
+    end)
 end

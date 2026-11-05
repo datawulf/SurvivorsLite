@@ -1,8 +1,8 @@
 # SurvivorsLite
 
 A small, fast HUD addon for [Azeroth Survivors](https://wow.aethus.pl), written as a light
-replacement for SurvivorsDragonUi. Tested against the client's addon API of web build
-`fe298f333712` (2026-10-31).
+replacement for SurvivorsDragonUi. Built on the game's official addon API and tested against
+web build `f3a3d645a1ed` (2026-11-05).
 
 - Download: [latest release](https://github.com/datawulf/SurvivorsLite/releases/latest)
 - Documentation: [datawulf.github.io/SurvivorsLite](https://datawulf.github.io/SurvivorsLite/)
@@ -20,15 +20,15 @@ Entertainment.
   its amount after your health ("489 +120"), from the shield the run reports. Under it
   your buffs and debuffs with time left and stacks, and for timed buffs how much of this
   run they were up. A buff that ran out stays dimmed with its uptime.
-- A class colored ring around your character, drawn above the 3D world so you can see
-  where you stand under tree tops.
+- A class colored ring on your feet, drawn above the 3D world so you can see where you
+  stand under tree tops. The game itself says where your feet are on screen, so the ring,
+  the hero bar and the warnings follow you.
 - Name plates:
-  - Final boss (skull, magenta), bosses (skull, orange) and guardians (star, gold, dimmed
-    while asleep) get a bar with health in percent and as a number, "ENRAGED" when a
-    boss enrages, and your debuffs on them with stacks and time left.
-  - A plate is matched to the run's unit list by name and, where several units share a
-    name (an elite pack mob named like a guardian), by health, so only the real one is
-    marked. Elites can be marked too (off by default).
+  - Final boss (skull, magenta), bosses (skull, orange) and guardians (their lair's dragon
+    head, dimmed while asleep) get a bar of the addon's own over the exact unit's head, with
+    health in percent and as a number, "ENRAGED" when a boss enrages, and your debuffs on
+    them with stacks and time left. These do not jump apart in crowds and do not need name
+    plates. Elites can be marked too (off by default).
   - Plain enemies get a thin bar of their own health and nothing else (or no plate, or
     the game's plate).
   - Party members get a class colored plate with their level and a big arrow.
@@ -38,14 +38,19 @@ Entertainment.
   once something raised them, or all of them. A number that just changed is green when
   it went up and red when it went down for 5 seconds, so you see what a pick did. Point
   at a row for what it means and what your worn gear adds.
-- Party frames: class colored health, level, damage per second, DOWN or revive
-  progress, faded when out of range. Click a row to target.
-- Damage meter: your damage by spell as bars with the spell's icon, its damage per
-  second and its share, the longest bar the top spell's. Tabs switch to the party's
-  heroes (class colors, your own name in gold, their best spell on mouse over), the last
-  boss fight and your healing. Bars glide to their new length. Point at a row for the
-  totals. `/slite rows 3-15` sets how many rows show. The game's own meter stays; turn it
-  off in the game's options (Show Damage Meter) if you only want this one.
+- Party frames: class colored health, level, damage per second, "DOWN 34 yd" or revive
+  progress, faded when out of range. Click a row to target. A friend who is down also gets
+  a marker on the spot, seen through walls, and a minimap pin that points the way.
+- Damage meter: your damage by source as bars with the source's own icon, its damage per
+  second and its share, the longest bar the top one's. Tabs switch to the party's heroes
+  (class colors, your own name in gold, their best spells on mouse over), the last boss
+  fight and your healing. Bars glide to their new length. Point at a row for the totals.
+  Reset counts from now on without touching the game's numbers, and All goes back to the
+  whole run. `/slite rows 3-15` sets how many rows show, `/slite window 5-120` makes damage
+  per second cover the last seconds.
+- The game's own meter, boss bars and lair flag can be hidden while this addon replaces
+  them (off by default, back at logout). The run stats, action bar, jewelry and meter stay
+  over the level-up cards.
 - Every guardian's lair has a look of its own, by its place in the run's lair line: a
   dragon head in a color of its own (red, blue, green, bronze, purple), drawn for this
   addon on a transparent background. The same look is on its minimap pin, its line in the
@@ -78,9 +83,9 @@ Entertainment.
 - Range circles around your character: a blue one at a radius you pick (8 yd by
   default), an optional orange second one and an optional gold one at your pickup
   radius. The blue and orange circles can grow with your Area stat.
-- Circles lie on the ground in perspective when the client gives the camera's distance
-  and angle (see below), and follow your zoom and camera angle; otherwise they are flat on
-  the screen and need one size calibration.
+- Circles lie on the ground where the game itself puts them, at any zoom and angle (see
+  below). Without anything to measure from they are flat on the screen and need one size
+  calibration.
 - Warnings over your character: the next boss in the last 10 seconds before it comes,
   and "Name is down!" when a party member falls. A red pulsing screen edge under 35
   percent health.
@@ -97,7 +102,8 @@ In the browser game: Options, AddOns, Install, then pick the zip. It loads on yo
 run. Remove SurvivorsDragonUi on the same page so the two do not both run. A new version
 installs over the old one and keeps your settings.
 
-In the Windows build: unzip so the game's AddOns folder holds `SurvivorsLite\`.
+In the Windows and Linux builds: unzip so `benilla-config/AddOns/SurvivorsLite/` sits next to
+the game's executable.
 
 ## Feature status
 
@@ -111,17 +117,26 @@ Seen working in game (player screenshots and reports):
 - Hero bar under your character: level, health and experience line.
 - Buff and debuff icons with time left and buff uptime.
 - The class colored ring around your character.
-- Boss and guardian plates with health bars.
 - Thin health bars for plain enemies.
 - The boss status list.
 - The range circle and skill circles, flat on the screen.
+
+New in 1.11.0 on the game's official API, not confirmed in game yet:
+
+- Circles on the ground and the ring, hero bar and warnings on your feet. `/slite world`
+  says what they measure from.
+- Boss and guardian plates over the exact unit, with name plates off too. The old plates
+  on the client's name plates were seen working in game.
+- Minimap pins and lair distances from your live position on every map.
+- The damage meter from the meter API: every source's icon, Reset and `/slite window`.
+- The run stats, action bar, jewelry and meter over the level-up cards.
+- Hiding the game's meter, boss bars and lair flag, and getting them back at logout.
+- "DOWN 34 yd" on party rows, the marker on the spot and the minimap pin.
 
 Not confirmed in game yet:
 
 - The guardians' reset range (leash): the leash bar over you, learning the real distance,
   leash rings on the minimap and leash distances in the status list.
-- Circles on the ground from the live camera. The client may not give live values to
-  saved views; then the circles stay flat (`/slite camera` tells).
 - Skill circles following each skill's tooltip yards (ranks and upgrades).
 - Minimap pins for lairs and chests.
 - Guardian looks and the next respawn pin and line.
@@ -129,18 +144,15 @@ Not confirmed in game yet:
 - The floating action bar with cooldown seconds and talent clocks.
 - The gear buttons on the minimap and the action bar.
 - Debuff icons and absolute health on boss and guardian plates.
-- Matching same-named units by health, so only the real guardian is marked.
 - Party frames and party member plates.
 - The boss countdown, the "Name is down!" warning and the low health screen edge.
 - The fix for the Alterac Valley error window (1.7.1).
 - The picked jewelry row under the action bar (1.8.0).
 - Area skills growing by your Area stat on top of their tooltip (1.8.0). If an area skill
   still hits farther than its circle, the game may count the enemy's body size too.
-- Minimap pins and lair distances in zones without a map such as Naxxramas, and the
-  indoor minimap scale (1.8.1).
+- The indoor minimap scale (1.8.1).
 - The run stats panel (1.9.0).
-- The damage meter, the transparent dragon head and chest icons and the smaller boss
-  skull (1.10.0).
+- The transparent dragon head and chest icons and the smaller boss skull (1.10.0).
 
 Tried and not possible from an addon: see [Limits](#limits).
 
@@ -149,28 +161,26 @@ Tried and not possible from an addon: see [Limits](#limits).
 `/slite` (or `/sl`), the gear on the minimap's edge, the gear at the end of the floating
 action bar, or the SurvivorsLite button in the game menu (Esc) open the options window.
 Esc closes it. Point at a setting for what it does. "Move frames" lets you drag the hero
-bar, action bar, party frames, status list and the circles' center.
+bar, action bar, party frames, status list and, for flat circles, their center.
 
 ## Circles on the ground
 
-The client has no addon call for the camera, but 1.12's saved views carry it: `SaveView(5)`
-writes the camera's distance and pitch into the `cameraDistanceD` and `cameraPitchD`
-settings. The addon reads them twice a second (ten times a second right after the camera
-moved or the wheel zoomed) while a circle shows, and projects every dot of every circle
-onto flat ground around your feet. View 5's own values are put back at logout. The options
-window shows what it reads under Camera, and `/slite camera` says it in chat.
+The game's world anchors put any place in the world through the camera, and your position
+says where you stand. They have no handle on your own hero, so the addon takes one anchor
+that stays put (a lair, a chest or the place an enemy fell) and adds the yards to your feet.
+Your feet are projected every frame, and while a circle shows four more points around them
+give the ground's perspective. There is nothing to calibrate and no lag. The options window
+shows what it measures from under Placement, and `/slite world` says it in chat.
 
-- If it says "Waiting for the camera" after you zoomed or turned the camera, this client
-  does not write live values into saved views, and the circles stay flat.
-- Field of view sets how wide the camera sees. Match it once: turn on Pickup radius and
-  change Field of view until experience starts flying to you as it touches the gold
-  circle. After that the circles are right at every zoom and angle.
-- The ground is taken as flat at your feet, so on slopes and hills the circles drift.
+- The game says nothing about the ground's height, so the ground is taken as flat at your
+  feet. On slopes and hills the circles drift.
+- Until there is a lair, a chest or a fallen enemy to measure from, the circles are flat.
+- `/slite ground off` keeps them flat for good.
 
 ## Flat circles
 
-Without the live camera the circles are drawn flat on the screen around your character
-and need one calibration for the zoom you play at:
+Without the game's projection the circles are drawn flat on the screen around your
+character and need one calibration for the zoom you play at:
 
 1. Zoom out the way you play and open `/slite`.
 2. Turn on Pickup radius (it shows once a run sends your stats).
@@ -195,10 +205,8 @@ is learned in play, both ways:
 - When an awake guardian falls back asleep alive while you live, where you stood is where
   it gave up. The addon says so in chat and the "?" goes away.
 
-The distance is measured from you to the lair through your map position and the lair's.
-Where the zone has no map (Naxxramas) the run line's world positions stand in, which
-move only when the line comes. Moving the leash slider or
-`/slite leash N` forgets what play taught.
+The distance is measured from your live position to the lair, on every map. Moving the
+leash slider or `/slite leash N` forgets what play taught.
 
 ## Commands
 
@@ -226,8 +234,10 @@ move only when the line comes. Moving the leash slider or
 | `/slite autoplates on/off` | turn enemy plates on by itself |
 | `/slite allies on/off` | party member plates, turns friendly plates on in a party |
 | `/slite party on/off` | party frames |
+| `/slite downmark on/off` | marker and minimap pin on a party member who is down |
 | `/slite meter on/off` | damage meter |
 | `/slite rows 3-15` | rows in the damage meter |
+| `/slite window 0-120` | seconds the meter's damage per second covers, 0 for the whole run |
 | `/slite threats on/off` | boss status list |
 | `/slite lairs on/off` / `chests on/off` | lairs and chests on the minimap |
 | `/slite leashring on/off` | leash rings on the minimap |
@@ -241,47 +251,64 @@ move only when the line comes. Moving the leash slider or
 | `/slite range2 30` / `range2 on/off` | second range circle |
 | `/slite pickup on/off` | circle at your pickup radius |
 | `/slite area on/off` | grow the range circles and area skill circles with your Area stat |
-| `/slite ground on/off` | circles on the ground from the live camera |
-| `/slite fov 30-100` | the camera's field of view for ground circles |
-| `/slite camera` | what the ground circles read from the camera |
-| `/slite zoom 5-60` | circle size per yard, matched to your camera zoom |
-| `/slite tilt 0.3-1` | circle height for a camera that looks in from the side |
+| `/slite ground on/off` | circles on the ground and your ring on your feet, projected by the game |
+| `/slite world` | what the ground circles measure from |
+| `/slite zoom 5-60` | flat circle size per yard, matched to your camera zoom |
+| `/slite tilt 0.3-1` | flat circle height for a camera that looks in from the side |
+| `/slite overcards on/off` | run stats, action bar, jewelry and meter over the level-up cards |
+| `/slite hidemeter on/off` | hide the game's meter while this addon's shows |
+| `/slite hidebosses on/off` | hide the game's boss bars while this addon's show |
+| `/slite hideflag on/off` | hide the game's lair flag while this addon's pins show |
 | `/slite scale 0.6-2` | size of the hero bar, party frames and list |
 | `/slite perf` | measures this addon's own Lua time for 10 seconds |
 | `/slite reset` | default settings and positions |
 
 ## Why it is fast
 
-- No per-frame work. One OnUpdate drives a few tickers (0.1 to 1 s) that sleep when
-  there is nothing to count down.
+- Almost no per-frame work. One OnUpdate drives a few tickers (0.1 to 1 s) that sleep when
+  there is nothing to count down. Each frame only your feet and the few boss and guardian
+  plates go through the game's camera, as it asks for, and the four ground points while a
+  circle shows.
 - Name plates: the world's frames are only listed when their count grows. A plate is
-  classified when it shows, its name or its match changes. Plain enemies' thin bars are
-  the game's own health bar made small, so they run no addon code. Only the marked few
-  listen to their health.
+  classified when it shows or its name changes. Plain enemies' thin bars are the game's own
+  health bar made small, so they run no addon code.
+- The meter reads the game's counters at most three times a second and only when they
+  moved.
 - The run's addon lines only set dirty flags; rebuilds run at most 3 to 5 times a second.
 - Text is only set when the shown value changes. Circles and minimap rings only move
-  their dots when a radius, the zoom or the screen changes. The options window is built
+  their dots when a radius, the view or the screen changes. The options window is built
   the first time it opens and runs nothing while closed.
 
-In the test harness (300 plates, 10 health changes per frame, unit and stat lines at 10
-per second, timed with a high resolution clock) it measured about 3.5 ms of Lua per
-second, 0.06 ms per frame. Use `/slite perf` in game for the real number.
+In the test harness (300 plates, 10 health changes per frame, unit, stat and meter lines at
+10 per second and a circle on the ground) it measured about 9 ms of Lua per second, 0.15 ms
+per frame, with a rough clock and with the game's native calls played by Lua stand-ins. Use
+`/slite perf` in game for the real number.
 
 ## Limits
 
 - Trees still draw over the world. The client gives addons no access to the 3D scene.
-- Name plates jump apart in crowds: the client places them with a solver of its own and
-  an addon only sees where it put them, so they cannot be made to overlap. Plain enemies
-  hidden (`/slite mobs hide`) is the way to keep crowds calm.
-- Ground circles assume flat ground and that the camera orbits a point 1.5 yd above your
-  feet, and they lag the camera's own smoothing by up to half a second.
+- The client's name plates jump apart in crowds: it places them with a solver of its own
+  and an addon only sees where it put them. That still goes for the plain enemies' thin
+  bars. Plain enemies hidden (`/slite mobs hide`) is the way to keep crowds calm.
+- Plain enemies' bars and plates of party members who are up stay on the client's plates:
+  the game gives no anchor on a friend who is up and no health of a plain enemy.
+- While a boss or guardian lives, the client's plates with its name stay hidden, so an elite
+  named like a guardian shows no thin bar until that guardian is dead.
+- Boss and guardian health moves 5 times a second, with the run's unit line.
+- Ground circles assume flat ground at your feet.
 - Plain enemy bars and hidden plates change the client's own plate parts. If the client
   ever lays its plates out again, they show as the game's plates.
 - Minimap pins assume 1.12's minimap scale (466.67 yd across at zoom 0 outdoors, 300
-  indoors) and that the run's lair and chest map coordinates are those of your zone's map.
-  Where both minimap zoom settings match, telling indoors from outdoors takes one zoom
-  step and back, once per place. Without a zone map the pins follow the run line's world
-  position, so they move in steps.
+  indoors). Where both minimap zoom settings match, telling indoors from outdoors takes one
+  zoom step and back, once per place.
+- The row of level-up cards is wide. The run stats and meter start out past it, but in a
+  nearly square window they still overlap a card's edge a little, and a click there goes to
+  the panel. `/slite overcards off` or dragging them helps.
+- While frames are kept over the cards the client also draws the target's health bars over
+  the dimmed screen. That comes with `overcards` and goes when it is off.
+- Hiding parts of the game's HUD is saved by the game, so the addon puts them back at
+  logout. If the game crashes they stay hidden until the next run with the addon or the
+  game's options (the lair flag has no check box there).
 - Skill circles need the skill's tooltip to name its reach in yards; a skill without
   one (a buff, a self heal) is not offered. Which skills Area grows is read from the kind
   of reach the tooltip names, not from the game's own rules, which addons cannot see.
@@ -296,7 +323,9 @@ second, 0.06 ms per frame. Use `/slite perf` in game for the real number.
 ## Development
 
 The game's addon API (AZS_*) is Lua inside the client build and belongs to the game, so
-it is not in this repository. Fetch it once, then run the tests:
+it is not in this repository. Fetch it once, then run the tests. Position, world anchors and
+the meter API are native client code: `tests/mock.lua` plays them from the game's addon doc,
+so the harness cannot prove those parts against the real client.
 
 ```bash
 pip install lupa

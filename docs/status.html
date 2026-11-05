@@ -30,7 +30,7 @@
   <p>Tried one of the unconfirmed ones? Tell how it went with a
   <a href="https://github.com/datawulf/SurvivorsLite/issues/new?template=feature_check.md">feature
   check</a>. A screenshot helps most.</p>
-  <p class="note">Status as of version 1.10.0 (2026-10-31).</p>
+  <p class="note">Status as of version 1.11.0 (2026-11-05).</p>
 
   <h2><span class="tag ok">seen in game</span> Confirmed by player screenshots and reports</h2>
   <ul class="status ok">
@@ -39,8 +39,6 @@
     <li><strong>Buffs, debuffs and buff uptime</strong><span>Icons with time left and the
     uptime percent under timed buffs (1.2).</span></li>
     <li><strong>Class colored ring</strong><span>Marks where you stand under tree tops (1.0).</span></li>
-    <li><strong>Boss and guardian plates</strong><span>Bars with health for the final boss,
-    bosses and guardians (1.0).</span></li>
     <li><strong>Thin bars for plain enemies</strong><span>Shown since 1.2. They still jump
     apart in crowds, see below.</span></li>
     <li><strong>Boss status list</strong><span>One line per boss and guardian (1.0, one line
@@ -49,26 +47,39 @@
     circles at each skill's reach (1.3), drawn flat on the screen.</span></li>
   </ul>
 
+  <h2><span class="tag wait">not confirmed</span> New in 1.11.0 on the game's official API</h2>
+  <ul class="status wait">
+    <li><strong>Circles on the ground</strong><span>The game's world anchors place them, and
+    the ring, hero bar and warnings on your feet. <code>/slite world</code> says what they
+    measure from. Flat until there is a lair, a chest or a fallen enemy.</span></li>
+    <li><strong>Boss and guardian plates over the exact unit</strong><span>The addon's own
+    plates at the game's head height, with name plates off too. The old plates on the client's
+    name plates were seen working in game.</span></li>
+    <li><strong>Pins and distances from your live position</strong><span>On every map,
+    Naxxramas included, every frame.</span></li>
+    <li><strong>Damage meter on the meter API</strong><span>Every source's icon, the Reset
+    button and <code>/slite window</code>.</span></li>
+    <li><strong>Over the level-up cards</strong><span>Run stats, action bar, jewelry and
+    meter stay on screen while you pick a card.</span></li>
+    <li><strong>Hiding the game's HUD parts</strong><span>The game's meter, boss bars and lair
+    flag, and getting them back at logout.</span></li>
+    <li><strong>Friends who are down</strong><span>"DOWN 34 yd" on party rows, a marker on the
+    spot and a minimap pin.</span></li>
+  </ul>
+
   <h2><span class="tag wait">not confirmed</span> Built and tested, waiting for a check in game</h2>
   <ul class="status wait">
     <li><strong>Reset range (leash) of the guardians</strong><span>The leash bar over you
     while a guardian chases you, learning the real distance from play, leash rings on the
-    minimap and the "20/40 yd" lines in the status list (1.2, 1.5). Distances need your
-    map position, so they do not show without a zone map.</span></li>
-    <li><strong>Circles on the ground</strong><span>Reads the camera through saved view 5
-    (1.4). Whether this client writes live values there is unknown; if not, the circles
-    stay flat and <code>/slite camera</code> says "Waiting for the camera".</span></li>
+    minimap and the "20/40 yd" lines in the status list (1.2, 1.5).</span></li>
     <li><strong>Skill circles following their tooltips</strong><span>A new rank or upgrade
     that changes a skill's yards moves its circle by itself.</span></li>
     <li><strong>Minimap pins for lairs and chests</strong><span>They assume 1.12's minimap
     scale (1.2), the smaller indoor one indoors (1.8.1).</span></li>
-    <li><strong>Damage meter</strong><span>Your spells, the party, the last boss fight and
-    your healing as gliding bars with icons (1.10.0).</span></li>
+    <li><strong>Damage meter tabs</strong><span>Your spells, the party, the last boss fight
+    and your healing as gliding bars (1.10.0).</span></li>
     <li><strong>Run stats panel</strong><span>The character pane's numbers on the screen, the
     changed ones green or red for a while (1.9.0).</span></li>
-    <li><strong>Minimap pins without a zone map</strong><span>In Naxxramas and other places
-    without a map the run line's world position places the pins and measures the lairs'
-    distances (1.8.1).</span></li>
     <li><strong>Guardian looks and the next respawn</strong><span>One look per lair on its
     pin, line and plate (raid marks in 1.7, item icons in 1.8, the addon's own transparent
     dragon heads since 1.10); the lair that comes
@@ -81,8 +92,6 @@
     options (1.2).</span></li>
     <li><strong>Debuffs and absolute health on boss bars</strong><span>Your debuffs with
     stacks and time left under the bar (1.2).</span></li>
-    <li><strong>Matching same-named units by health</strong><span>So an elite pack mob named
-    like a guardian is not marked (1.2).</span></li>
     <li><strong>Party frames and party plates</strong><span>Health, level, damage per second
     and revive progress; class colored plates with an arrow (1.0).</span></li>
     <li><strong>Warnings</strong><span>Boss countdown, "Name is down!" and the low health
@@ -104,11 +113,10 @@
   <ul class="status no">
     <li><strong>See-through trees</strong><span>The client gives addons no access to the 3D
     scene. The ring and circles are drawn above the world instead.</span></li>
-    <li><strong>Overlapping name plates</strong><span>The client places plates with a solver
-    of its own and ignores their size; shrinking them (1.2) did not help and was removed in
-    1.4. Hiding plain enemies (<code>/slite mobs hide</code>) keeps crowds calm.</span></li>
-    <li><strong>Bosses on the minimap</strong><span>The game sends positions for lairs and
-    chests but not for bosses.</span></li>
+    <li><strong>Overlapping plain enemy plates</strong><span>The client places its plates with
+    a solver of its own and ignores their size; shrinking them (1.2) did not help and was
+    removed in 1.4. Hiding plain enemies (<code>/slite mobs hide</code>) keeps crowds
+    calm. Boss and guardian plates are the addon's own since 1.11.0 and do not jump.</span></li>
   </ul>
 </main>
 

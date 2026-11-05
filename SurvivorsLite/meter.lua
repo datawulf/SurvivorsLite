@@ -1,15 +1,17 @@
 -- The damage meter: your spells by damage, the party's heroes, the last boss fight or your
--- healing, from the run's own meter lines. Each row is a bar as long as its share of the
--- top row, with its icon, its damage per second and its share of the whole. The tabs at
--- the top switch between them; point at a row for its numbers.
+-- healing, from the game's meter API: every source with its own icon, a stable key, and a
+-- reset point of your own that clears nothing in the game. A build without that API gets the
+-- run's plain meter lines, without icons. Each row is a bar as long as its share of the top
+-- row, with its damage per second and its share of the whole. The tabs at the top switch
+-- between them; point at a row for its numbers.
 --
--- New lines are drawn at most five times a second, and a bar glides to its new length on a
--- short ticker that sleeps once every bar has arrived.
+-- The rows are read at most three times a second, only when the game's counters moved, and a
+-- bar glides to its new length on a short ticker that sleeps once every bar has arrived.
 
 local SL = SurvivorsLite
 local M = SL.Module({})
 
-local W, ROW_H, GAP, HEAD_H, PAD = 236, 16, 2, 20, 4
+local W, ROW_H, GAP, HEAD_H, PAD = 256, 16, 2, 20, 4
 local BAR_W = W - PAD * 2 - ROW_H - 2
 local BAR_TEX = SL.MEDIA .. "bar"
 local GOLD = { 1, 0.82, 0 }
@@ -35,6 +37,7 @@ local MODES = {
     { key = "healing", label = "Heal", w = 34, unit = "hps", what = "Healing", empty = "No healing yet." },
 }
 
+-- The game's plain lines of a tab, which also tell whether a tab has anything at all.
 local function Lines(key)
     local t
     if key == "damage" then t = AZS_METER
@@ -53,14 +56,132 @@ local function Mode()
 end
 
 local colors, colorCount = {}, 0
-local function SpellColor(name)
-    local c = colors[name]
+local function SpellColor(key)
+    local c = colors[key]
     if not c then
         c = PALETTE[math.mod(colorCount, table.getn(PALETTE)) + 1]
         colorCount = colorCount + 1
-        colors[name] = c
+        colors[key] = c
     end
     return c
+end
+
+-- ---------------------------------------------------------------- the game's meter API
+
+-- The window's four tabs as the game's meter calls them.
+local QUERY = {
+    damage = { metric = "damage", scope = "self", period = "run", groupBy = "source", windowed = true },
+    party = { metric = "damage", scope = "party", period = "run", groupBy = "owner", windowed = true },
+    boss = { metric = "damage", scope = "self", period = "encounter", groupBy = "source" },
+    healing = { metric = "healing", scope = "self", period = "run", groupBy = "source" },
+}
+local checkpoint      -- your own reset point, while one is set
+local checkpointRun   -- the run it belongs to
+
+local function HasApi()
+    return type(AZS_GetMeterContext) == "function" and type(AZS_GetMeterSnapshot) == "function"
+end
+
+-- Seconds the rate covers: 0 is the whole run, the game takes 5 to 120.
+local function Window()
+    local w = math.floor(tonumber(SL.db.meterWindow) or 0)
+    if w > 0 and w < 5 then w = 5 end
+    return w
+end
+
+local function NewQuery(mode, runId)
+    local q = QUERY[mode]
+    local out = { apiVersion = 1, runId = runId, metric = q.metric, scope = q.scope, period = q.period,
+        groupBy = q.groupBy, windowSeconds = 0, checkpointId = checkpoint }
+    if q.windowed then out.windowSeconds = Window() end
+    return out
+end
+
+local function Value(rate)
+    if type(rate) == "number" then return rate end
+    if type(rate) == "table" and type(rate.value) == "number" then return rate.value end
+end
+
+-- The rate to show: the recent one while it is ready, else the average.
+local function Rate(stats)
+    return Value(stats.displayRate) or Value(stats.periodAverage) or 0
+end
+
+local function DropCheckpoint()
+    if checkpoint and type(AZS_ReleaseMeterCheckpoint) == "function" then AZS_ReleaseMeterCheckpoint(checkpoint) end
+    checkpoint, checkpointRun = nil, nil
+end
+
+local BAD_CHECKPOINT = { INVALID_CHECKPOINT = true, CHECKPOINT_EXPIRED = true, CHECKPOINT_INVALIDATED = true }
+
+-- A tab's rows from the game: rows, the total's rate; nil and "wait" while the game is still
+-- catching up, nil and "lines" when only its plain lines can answer.
+local function ReadApi(mode)
+    local context, err = AZS_GetMeterContext()
+    if not context then
+        if err and err.code == "NOT_READY" then return nil, "wait" end
+        return nil, "lines"
+    end
+    if checkpoint and checkpointRun ~= context.runId then DropCheckpoint() end
+    local snap, e = AZS_GetMeterSnapshot(NewQuery(mode, context.runId))
+    if not snap and e and BAD_CHECKPOINT[e.code] then
+        -- A /reload or a new run ended it: back to the whole run.
+        DropCheckpoint()
+        snap, e = AZS_GetMeterSnapshot(NewQuery(mode, context.runId))
+    end
+    if not snap then
+        local code = e and e.code
+        if code == "NOT_READY" then return nil, "wait" end
+        if code == "NO_PARTY" or code == "NO_ENCOUNTER" then return {}, 0 end
+        return nil, "lines"
+    end
+    local rows = {}
+    for i = 1, table.getn(snap.rows) do
+        local r = snap.rows[i]
+        local row = { amount = tonumber(r.displayAmount) or 0, rate = Rate(r), average = Value(r.periodAverage),
+            recent = Value(r.recentRate), share = tonumber(r.share) or 0 }
+        if mode == "party" then
+            local actor = snap.actors and snap.actors[r.ownerId] or {}
+            row.name, row.class, row.owner = actor.name, actor.classKey, r.ownerId
+            row.mine = r.ownerId == snap.context.localOwnerId
+        else
+            local src = snap.sources and snap.sources[r.sourceKey] or {}
+            row.name = src.name
+            -- A new rank is a new key: the ability or talent keeps its color through them.
+            row.key = src.abilityKey or src.talentKey or r.sourceKey
+            if type(src.icon) == "table" and src.icon.status == "ready" then row.icon = src.icon.path end
+        end
+        rows[i] = row
+    end
+    return rows, Rate(snap.totals or {}), snap.context
+end
+
+-- A tab's rows from the plain lines.
+local function ReadLines(mode)
+    local lines = Lines(mode)
+    local rows, total, sum = {}, 0, 0
+    for i = 1, table.getn(lines) do sum = sum + (tonumber(lines[i].dmg) or 0) end
+    for i = 1, table.getn(lines) do
+        local line = lines[i]
+        local amount = tonumber(line.dmg) or 0
+        local rate = tonumber(line.dps) or 0
+        total = total + rate
+        local share = 0
+        if sum > 0 then share = amount / sum end
+        rows[i] = { name = line.name, key = line.name, amount = amount, rate = rate, average = rate, share = share,
+            class = line.class, mine = mode == "party" and tostring(line.name) == UnitName("player"),
+            top = line.top, topRate = tonumber(line.topdps) }
+    end
+    return rows, total
+end
+
+-- A hero's best spells, read only when you point at their row.
+local function OwnerSpells(owner, runId)
+    if not (owner and runId and HasApi()) then return nil end
+    local q = NewQuery("damage", runId)
+    q.scope, q.ownerId, q.windowSeconds = "owner", owner, 0
+    local snap = AZS_GetMeterSnapshot(q)
+    return snap
 end
 
 -- ---------------------------------------------------------------- the frame
@@ -91,6 +212,11 @@ empty:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD + 2, -HEAD_H - PAD - 2)
 empty:SetTextColor(0.55, 0.55, 0.55)
 
 local Rebuild
+local seen -- what the rows were last read from, so a quiet meter reads nothing again
+
+local function Revision(context)
+    return tostring(context.counterRevision) .. ";" .. tostring(context.metadataRevision) .. ";" .. tostring(context.runId)
+end
 
 local tabs = {}
 local function TabTip()
@@ -125,12 +251,49 @@ for i = 1, table.getn(MODES) do
     b:RegisterForClicks("LeftButtonUp")
     b:SetScript("OnClick", function()
         SL.db.meterMode = this.slMode.key
+        seen = nil
         Rebuild()
     end)
     b:SetScript("OnEnter", TabTip)
     b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     tabs[i] = b
 end
+
+-- Your own reset point: amounts count from here on and nothing in the game changes. Clicking
+-- again goes back to the whole run.
+local resetButton = CreateFrame("Button", nil, frame)
+resetButton:SetHeight(HEAD_H)
+resetButton:SetWidth(32)
+resetButton:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 2, 0)
+resetButton.text = SL.Text(resetButton, 10)
+resetButton.text:SetPoint("CENTER", resetButton, "CENTER", 0, 0)
+resetButton.text:SetTextColor(0.8, 0.8, 0.8)
+resetButton:EnableMouse(true)
+resetButton:RegisterForClicks("LeftButtonUp")
+resetButton:SetScript("OnClick", function()
+    if checkpoint then
+        DropCheckpoint()
+    elseif type(AZS_CreateMeterCheckpoint) == "function" and HasApi() then
+        local context = AZS_GetMeterContext()
+        local made = context and AZS_CreateMeterCheckpoint(context.runId)
+        if made then checkpoint, checkpointRun = made.checkpointId, context.runId end
+    end
+    seen = nil
+    Rebuild()
+end)
+resetButton:SetScript("OnEnter", function()
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(this, "ANCHOR_TOP")
+    if checkpoint then
+        GameTooltip:SetText("Whole run", 1, 1, 1)
+        GameTooltip:AddLine("Back to the numbers of the whole run.", 1, 0.82, 0, 1)
+    else
+        GameTooltip:SetText("Reset", 1, 1, 1)
+        GameTooltip:AddLine("Count from now on, here only: the game's own meter and numbers do not change. A /reload ends it.", 1, 0.82, 0, 1)
+    end
+    GameTooltip:Show()
+end)
+resetButton:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 
 local function ShowTip()
     if not GameTooltip or not this.slName then return end
@@ -139,6 +302,15 @@ local function ShowTip()
     for i = 1, table.getn(this.slTip) do
         local line = this.slTip[i]
         GameTooltip:AddDoubleLine(line[1], line[2], 1, 0.82, 0, 1, 1, 1)
+    end
+    -- A hero's best spells, asked for only now.
+    local snap = OwnerSpells(this.slOwner, this.slRun)
+    if snap then
+        for i = 1, math.min(table.getn(snap.rows), 3) do
+            local r = snap.rows[i]
+            local src = snap.sources and snap.sources[r.sourceKey] or {}
+            GameTooltip:AddDoubleLine(tostring(src.name or "?"), SL.Short(Rate(r)) .. " dps", 1, 0.82, 0, 1, 1, 1)
+        end
     end
     GameTooltip:Show()
 end
@@ -216,11 +388,6 @@ end, false)
 
 -- ---------------------------------------------------------------- filling it
 
-local function Percent(part, whole)
-    if whole <= 0 then return "" end
-    return string.format("%.0f%%", part / whole * 100)
-end
-
 local function Whole(v)
     v = math.floor((tonumber(v) or 0) + 0.5)
     local s = tostring(v)
@@ -232,10 +399,13 @@ local function Whole(v)
     return s .. out
 end
 
+local function SharePercent(share)
+    return string.format("%.0f%%", (share or 0) * 100)
+end
+
 function Rebuild()
     local db = SL.db
     local mode = Mode()
-    local lines = Lines(mode.key)
     local any = false
     for i = 1, table.getn(MODES) do
         local b = tabs[i]
@@ -257,20 +427,33 @@ function Rebuild()
         frame:Hide()
         return
     end
+    local lines, rate, context
+    if HasApi() then
+        local how
+        lines, how, context = ReadApi(mode.key)
+        if not lines and how == "wait" then return "wait" end
+        if lines then rate = how else lines = nil end
+        if context then seen = Revision(context) else seen = nil end
+    end
+    if not lines then lines, rate = ReadLines(mode.key) end
+    if HasApi() and type(AZS_CreateMeterCheckpoint) == "function" then
+        if checkpoint then resetButton.text:SetText("All") else resetButton.text:SetText("Reset") end
+        resetButton:Show()
+    else
+        resetButton:Hide()
+    end
     local count = math.min(table.getn(lines), db.meterRows)
-    local top, sum, rate = 0, 0, 0
+    local top = 0
     for i = 1, table.getn(lines) do
-        local d = tonumber(lines[i].dmg) or 0
-        if d > top then top = d end
-        sum = sum + d
-        rate = rate + (tonumber(lines[i].dps) or 0)
+        if lines[i].amount > top then top = lines[i].amount end
     end
     if table.getn(lines) > 0 then
         total:SetText(SL.Short(rate) .. " " .. mode.unit)
     else
         total:SetText("")
     end
-    local me = UnitName("player")
+    local window = 0
+    if QUERY[mode.key].windowed then window = Window() end
     local moving = false
     for i = 1, count do
         local line = lines[i]
@@ -291,10 +474,9 @@ function Rebuild()
                 r.rank:SetText(i)
             end
         else
-            color = SpellColor(name)
-            local icon = SL.SpellIcon and SL.SpellIcon(name)
-            if icon then
-                r.icon:SetTexture(icon)
+            color = SpellColor(line.key or name)
+            if line.icon then
+                r.icon:SetTexture(line.icon)
                 r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 r.icon:Show()
                 r.rank:SetText("")
@@ -305,15 +487,14 @@ function Rebuild()
         end
         r.fill:SetVertexColor(color[1], color[2], color[3], 0.92)
         r.name:SetText(name)
-        if mode.key == "party" and name == me then
+        if line.mine then
             r.name:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
         else
             r.name:SetTextColor(1, 1, 1)
         end
-        local dmg = tonumber(line.dmg) or 0
-        r.value:SetText(SL.Short(tonumber(line.dps) or 0) .. "  " .. Percent(dmg, sum))
+        r.value:SetText(SL.Short(line.rate) .. "  " .. SharePercent(line.share))
         local goal = 0
-        if top > 0 then goal = dmg / top end
+        if top > 0 then goal = line.amount / top end
         if not r:IsShown() then
             SetFill(r, 0)
             r:Show()
@@ -322,13 +503,17 @@ function Rebuild()
         if r.cur ~= goal then moving = true end
         r.slName = name
         r.slTip = {
-            { mode.what, Whole(line.dmg) },
-            { "Per second", Whole(line.dps) },
-            { "Share", Percent(dmg, sum) },
+            { mode.what, Whole(line.amount) },
+            { "Per second", Whole(line.average or line.rate) },
         }
-        if mode.key == "party" and line.top and line.top ~= "" then
-            table.insert(r.slTip, { "Best spell", tostring(line.top) .. ", " .. SL.Short(tonumber(line.topdps) or 0) .. " dps" })
+        if window > 0 and line.recent then
+            table.insert(r.slTip, { "Last " .. window .. " s", Whole(line.recent) })
         end
+        table.insert(r.slTip, { "Share", SharePercent(line.share) })
+        if line.top and line.top ~= "" then
+            table.insert(r.slTip, { "Best spell", tostring(line.top) .. ", " .. SL.Short(line.topRate or 0) .. " dps" })
+        end
+        r.slOwner, r.slRun = line.owner, context and context.runId
     end
     for i = count + 1, table.getn(rows) do rows[i]:Hide() end
     local shown = count
@@ -344,11 +529,24 @@ function Rebuild()
     if moving then SL.Wake(glide) end
 end
 
+-- Whether the game's counters moved since the rows were read. A recent rate moves by itself,
+-- so a window always reads.
+local function Moved()
+    if not HasApi() then return true end
+    local context = AZS_GetMeterContext()
+    if not context or Window() > 0 then return true end
+    return Revision(context) ~= seen
+end
+
 local dirty = false
-local ticker = SL.Every(0.2, function()
+local ticker = SL.Every(0.33, function()
     if dirty then
         dirty = false
-        Rebuild()
+        if Moved() and Rebuild() == "wait" then
+            -- After a /reload the game takes a moment to catch up.
+            seen, dirty = nil, true
+            return
+        end
     end
     return false
 end, false)
@@ -367,11 +565,13 @@ function M.init()
     SL.OnAzs("AZSBOSSDMG", Changed)
     SL.OnAzs("AZSHEAL", Changed)
     SL.OnAzs("AZSZONE", Changed)
+    SL.OnAzs("AZSM", Changed)
     SL.On("PLAYER_ENTERING_WORLD", Changed)
 end
 
 function M.apply()
     frame:SetScale(SL.db.scale)
     SL.Place(frame)
+    seen = nil
     Rebuild()
 end

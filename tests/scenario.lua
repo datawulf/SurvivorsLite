@@ -22,8 +22,8 @@ MOCK.event("PLAYER_LOGIN")
 expect(SurvivorsLite.db ~= nil, "settings did not load")
 MOCK.addon("AZSSPELLS", "eviscerate,6762,3,5,5;blade_flurry,13877,2,8,8")
 
--- 300 plain enemies, a boss, a guardian, an elite, our summons, a party member. Plate health
--- matches the run's unit line: Hogger 50000/80000, Mother Fang 9000/10000.
+-- The client's plates of 300 plain enemies, a boss, a guardian, an elite, our summons and a
+-- party member. The run's unit line says Hogger 50000/80000, Mother Fang 9000/10000.
 local plain = {}
 for i = 1, 300 do table.insert(plain, MOCK.plate("Defias Thug", 1, 0, 0, 100)) end
 local boss = MOCK.plate("Hogger", 1, 0, 0, 62)
@@ -40,7 +40,7 @@ expect(MOCK.friendPlates, "friendly plates were not turned on in a party")
 expect(chatHas("gear button opens the options"), "no login hint about the options")
 
 MOCK.addon("AZSRUN", "ph=playing;t=100;sl=0")
-MOCK.addon("AZSZONE", "len=900")
+MOCK.addon("AZSZONE", "len=900;map=0;run=r1")
 MOCK.addon("AZSBOSSES", "1,107,Hogger,0,due;2,600,Edwin VanCleef,1,due")
 MOCK.addon("AZSUNITS", "boss,11,Hogger,50000,80000,1;guardian,12,Mother Fang,9000,10000,0;elite,13,Kobold Geomancer,500,800,0")
 MOCK.addon("AZSDEBUFFS", "11,172,3,18,110,0,,Spell_Shadow_AbominationExplosion,Corruption;11,980,1,24,120,0,,Spell_Shadow_CurseOfSargeras,Curse of Agony")
@@ -70,14 +70,30 @@ local function texts(f)
     end
     return out
 end
+-- A plate of the addon's own by its unit's id, shown or not.
+local function plateOf(id)
+    for i = 1, table.getn(SurvivorsLiteMarkers._children) do
+        local c = SurvivorsLiteMarkers._children[i]
+        if c.unitId == id and c.kind then return c end
+    end
+end
+local function shownPlate(id)
+    local o = plateOf(id)
+    return o and o._shown and o or nil
+end
 
-expect(boss._alpha == 1, "boss plate hidden")
-local bo = overlay(boss)
-expect(bo and bo._shown, "boss has no overlay")
-expect(bo.icon._w == 12 and bo.icon._h == 12, "boss skull not the smaller size: " .. tostring(bo.icon._w))
-expect(boss.mockBar._alpha == 0, "boss stock bar still visible")
-expect(guardian._alpha == 1 and overlay(guardian) and overlay(guardian)._shown, "guardian not highlighted")
-expect(not (overlay(elite) and overlay(elite)._shown), "elite marked while elites are off")
+-- Bosses and guardians: the addon's own plates over the exact unit, at the game's own place
+-- for its head, and the client's plates with those names out of the way. The first frame after
+-- the first ask answers NOT_READY, as the game does.
+local bo = shownPlate(11)
+expect(bo, "boss has no plate of its own")
+expect(bo and bo.icon._w == 12 and bo.icon._h == 12, "boss skull not the smaller size")
+local hx, hy = MOCK.project(MOCK.unitPos[11].x, MOCK.unitPos[11].y, MOCK.unitPos[11].z + 2.5)
+expect(bo and bo._point[2] == WorldFrame and bo._point[3] == "BOTTOMLEFT" and math.abs(bo._point[4] - hx) < 0.01 and math.abs(bo._point[5] - hy - 8) < 0.01, "boss plate not over its head")
+expect(boss._alpha == 0 and not boss._mouse, "the client's plate of a boss still shows")
+expect(shownPlate(12) and guardian._alpha == 0, "guardian has no plate or still its client plate")
+expect(not plateOf(13), "elite marked while elites are off")
+expect(elite._alpha == 1 and elite.mockBar._w == 40, "elite did not stay a plain bar")
 expect(SurvivorsLite.nearby["Hogger"] and SurvivorsLite.nearby["Mother Fang"], "marked plates not listed as near")
 
 -- Plain enemies: the client's bar, small, nothing else.
@@ -88,54 +104,84 @@ expect(p1._w == 128 and p1.mockBar._point[1] == "CENTER", "plain plate resized o
 expect(treant._alpha == 0, "own summons not hidden")
 expect(ally._alpha == 1 and overlay(ally), "ally not highlighted")
 
--- Boss health moves live through the stock bar; the absolute value comes from the run.
-boss.mockBar:SetValue(40)
+-- Health and the absolute value come from the run's line.
+MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0;elite,13,Kobold Geomancer,500,800,0")
+MOCK.run(30, 60)
 local bf = fill(bo)
-expect(math.abs(bf._value - 0.4) < 0.001, "boss overlay fill did not follow: " .. tostring(bf._value))
+expect(math.abs(bf._value - 0.4) < 0.001, "boss plate fill did not follow: " .. tostring(bf._value))
 local bt = texts(bf)
 expect(bt["40%"] and bt["32K"], "boss texts wrong")
+expect(string.find(bo.name._text, "ENRAGED"), "an enraged boss does not say so")
 
 -- Your debuffs under the boss bar.
 expect(bo.debuffs[1] and bo.debuffs[1]._shown and bo.debuffs[2]._shown, "no debuff icons on the boss plate")
 expect(bo.debuffs[1] and bo.debuffs[1].tex._tex == "Interface\\Icons\\Spell_Shadow_AbominationExplosion", "debuff icon texture")
 expect(bo.debuffs[1] and bo.debuffs[1].count._text == "3", "debuff stacks")
-expect(overlay(guardian).debuffCount == 0, "guardian shows the boss's debuffs")
+expect(shownPlate(12).debuffCount == 0, "guardian shows the boss's debuffs")
 MOCK.addon("AZSDEBUFFS", "12,172,1,18,110,0,,Spell_Shadow_AbominationExplosion,Corruption")
 MOCK.run(30, 60)
-expect(bo.debuffs[1] and not bo.debuffs[1]._shown and overlay(guardian).debuffs[1] and overlay(guardian).debuffs[1]._shown, "debuffs did not move to the guardian")
+expect(bo.debuffs[1] and not bo.debuffs[1]._shown and plateOf(12).debuffs[1] and plateOf(12).debuffs[1]._shown, "debuffs did not move to the guardian")
 
--- Two plates named like a guardian: only the one whose health fits it is marked.
+-- It walks: the plate goes with it in the frame handler, and off the screen it hides.
+MOCK.unitPos[11].x = MOCK.unitPos[11].x + 5
+MOCK.run(2, 60)
+hx, hy = MOCK.project(MOCK.unitPos[11].x, MOCK.unitPos[11].y, MOCK.unitPos[11].z + 2.5)
+expect(math.abs(bo._point[5] - hy - 8) < 0.01, "boss plate did not follow it")
+local bossAt = MOCK.unitPos[11].x
+MOCK.unitPos[11].x = bossAt + 500
+MOCK.run(2, 60)
+expect(not bo._shown, "a boss off the screen still has its plate")
+MOCK.run(30, 60)
+expect(not SurvivorsLite.nearby["Hogger"], "a boss off the screen is listed as near")
+MOCK.unitPos[11].x = bossAt
+MOCK.run(2, 60)
+expect(bo._shown, "the boss's plate did not come back")
+
+-- Named like a guardian: the guardian is told by the anchor's unit, so an elite of the same
+-- name gets no plate. The client's plates with that name stay hidden while it lives.
 local kt1 = MOCK.plate("Kobold Taskmaster", 1, 0, 0, 50)
 local kt2 = MOCK.plate("Kobold Taskmaster", 1, 0, 0, 100)
 MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0;guardian,15,Kobold Taskmaster,5000,10000,1;elite,16,Kobold Taskmaster,800,800,0")
 MOCK.run(30, 60)
-expect(overlay(kt1) and overlay(kt1)._shown, "real guardian not marked")
-expect(not (overlay(kt2) and overlay(kt2)._shown) and kt2.mockBar._w == 40, "same named elite marked as the guardian")
-expect(overlay(kt1) and texts(fill(overlay(kt1)))["5.0K"], "shared name lost the absolute health")
+expect(shownPlate(15) and not plateOf(16), "the same named elite got the guardian's plate")
+expect(shownPlate(15) and texts(fill(plateOf(15)))["5.0K"], "shared name lost the absolute health")
+expect(kt1._alpha == 0 and kt2._alpha == 0, "client plates named like a guardian still show")
 local slash = SlashCmdList["SURVIVORSLITE"]
 slash("elites on")
 MOCK.run(30, 60)
-expect(overlay(kt2) and overlay(kt2)._shown and overlay(kt2)._w == 70, "elite not marked with elites on")
-expect(overlay(kt1) and overlay(kt1)._w == 120, "guardian lost its style when the elite was marked")
+expect(shownPlate(16) and plateOf(16)._w == 70, "elite not marked with elites on")
+expect(plateOf(15) and plateOf(15)._w == 120, "guardian lost its style when the elite was marked")
 slash("elites off")
 MOCK.run(30, 60)
--- The real guardian walks out of plate range: the lone same named mob stays plain.
-kt1:Hide()
+expect(not (plateOf(16) and plateOf(16)._shown), "elite still marked with elites off")
+-- The guardian dies: its plate goes and the client's plates of that name come back.
+MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0")
 MOCK.run(30, 60)
-expect(not (overlay(kt2) and overlay(kt2)._shown), "a lone same named mob was marked as the far guardian")
+expect(not plateOf(15) or not plateOf(15)._shown, "a dead guardian kept its plate")
+expect(kt1._alpha == 1 and kt1.mockBar._w == 40, "same named plates stayed hidden after the guardian died")
 
--- A plain plate reused for a guardian, and the guardian plate reused for a plain enemy.
+-- A plain plate reused for a guardian, and the guardian's plate reused for a plain enemy.
 plain[5]:Hide()
 plain[5].mockName:SetText("Mother Fang")
-plain[5].mockBar:SetValue(90)
 plain[5]:Show()
 guardian:Hide()
 guardian.mockName:SetText("Defias Thug")
-guardian.mockBar:SetValue(100)
 guardian:Show()
 MOCK.run(30, 60)
-expect(plain[5]._alpha == 1 and overlay(plain[5]) and overlay(plain[5])._shown, "reused plate did not become a guardian")
-expect(not overlay(guardian)._shown and guardian.mockBar._alpha == 1 and guardian.mockBar._w == 40, "old guardian plate kept its highlight")
+expect(plain[5]._alpha == 0, "reused plate of a guardian still shows")
+expect(guardian._alpha == 1 and guardian.mockBar._alpha == 1 and guardian.mockBar._w == 40, "old guardian plate did not become a plain bar")
+
+-- A build without world anchors keeps the game's own plates for bosses.
+local realAnchors, realProject = AZS_GetWorldAnchors, AZS_ProjectWorldAnchors
+AZS_GetWorldAnchors, AZS_ProjectWorldAnchors = nil, nil
+slash("plates on")
+MOCK.run(30, 60)
+expect(not shownPlate(11) and boss._alpha == 1 and boss.mockBar._w == 118, "no anchors: the game's plate did not come back")
+AZS_GetWorldAnchors, AZS_ProjectWorldAnchors = realAnchors, realProject
+slash("plates on")
+MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0")
+MOCK.run(30, 60)
+expect(shownPlate(11) and boss._alpha == 0, "anchors back: the plate did not come back")
 
 -- Party member goes down: alert and DOWN text.
 MOCK.units.party1.hp = 0
@@ -259,8 +305,8 @@ MOCK.run(30, 60)
 
 -- ---------------------------------------------------------------- status list and minimap
 
--- Lairs and a chest on a 1000 x 1000 yd map: world y = 2400 - 1000 mx, x = 1600 - 1000 my.
-MOCK.mapX, MOCK.mapY = 0.40, 0.62
+-- Lairs and chests in the world, you at x 980, y 2000. Nothing here asks the world map.
+MOCK.pos.x, MOCK.pos.y = 980, 2000
 MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0.40,0.60,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,0.45,0.55,0;3,held,Rhahk'Zor,14,0,950,2050,0,0.35,0.65,0")
 MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40;8,1010,1990,0,0.41,0.59")
 MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,0;guardian,14,Rhahk'Zor,20000,20000,0")
@@ -297,15 +343,17 @@ local function wears(tex, n, dim)
     if dim then want = { 0.25 + c[1] * 0.3, 0.25 + c[2] * 0.3, 0.25 + c[3] * 0.3, 0.85 } end
     return tex and tex._tex == SurvivorsLite.LAIR_ICON and same(tex._coords, { 0, 1, 0, 1 }) and same(tex._vc, want)
 end
+local dist2 = SurvivorsLite.WorldOffset({ x = 1000, y = 2000, spaceId = "m7:other" })
+expect(dist2 == nil, "a point in another space has a distance")
 expect(string.find(SurvivorsLite.LAIR_ICON, "Interface\\AddOns\\SurvivorsLite\\media\\", 1, true) == 1, "lair icon is not the addon's own texture")
 expect(wears(rowIcon("Mother Fang"), 4) and wears(rowIcon("Kobold Taskmaster"), 2, true) and wears(rowIcon("Rhahk'Zor"), 3), "status lines do not carry the lair looks")
 expect(not same(LOOKS[4].color, LOOKS[2].color) and not same(LOOKS[2].color, LOOKS[3].color), "lairs share a color")
 local hoggerIcon = rowIcon("Hogger")
 expect(hoggerIcon and hoggerIcon._tex == SurvivorsLite.RAIDICONS and same(hoggerIcon._coords, ICON.skull), "boss line lost its skull")
 -- Mother Fang's plate wears the bronze head and its edge takes the lair's color.
-local mfIcon = overlay(plain[5]) and overlay(plain[5]).icon
+local mfIcon = plateOf(12) and plateOf(12).icon
 expect(wears(mfIcon, 4) and mfIcon._w == 16, "guardian plate does not wear its lair's icon")
-expect(same(overlay(plain[5]).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "guardian plate edge not in its lair's color")
+expect(same(plateOf(12).edge._vc, { LOOKS[4].color[1], LOOKS[4].color[2], LOOKS[4].color[3], 1 }), "guardian plate edge not in its lair's color")
 expect(lines["Edwin VanCleef"] and string.find(lines["Edwin VanCleef"], "^in "), "next boss line")
 
 -- Pins: the lair 20 yd north is 6 units up at zoom 0 (140 units for 466.67 yd).
@@ -361,7 +409,7 @@ local function leashLabel()
 end
 expect(leashLabel() == "Mother Fang  20 / 40 yd?", "leash bar text: " .. tostring(leashLabel()))
 -- You lead it 35 yd out: a warning before it gives up.
-MOCK.mapY = 0.635
+MOCK.pos.x = 965
 MOCK.run(6, 60)
 local warnedText = false
 for i = 1, table.getn(MOCK.frames) do
@@ -370,12 +418,12 @@ for i = 1, table.getn(MOCK.frames) do
 end
 expect(warnedText, "no warning before the guardian gives up")
 -- You lead it 50 yd out and it keeps chasing for three seconds: it holds at 50.
-MOCK.mapY = 0.65
+MOCK.pos.x = 950
 MOCK.run(180, 60)
 expect(SurvivorsLite.db.leashHeld == 50, "leash held distance: " .. tostring(SurvivorsLite.db.leashHeld))
 expect(leashLabel() == "Mother Fang  50 / 50 yd?", "leash bar after holding at 50: " .. tostring(leashLabel()))
 -- You run to 60 yd and it gives up: the leash is learned there.
-MOCK.mapY = 0.66
+MOCK.pos.x = 940
 MOCK.run(6, 60)
 MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,10000,10000,0;guardian,14,Rhahk'Zor,20000,20000,0")
 MOCK.run(6, 60)
@@ -384,7 +432,7 @@ local radius, confirmed = SurvivorsLite.LeashRadius()
 expect(radius == 60 and confirmed, "leash radius after learning: " .. tostring(radius))
 expect(not leash._shown, "leash bar stayed after the guardian went home")
 -- Waking again, the bar shows the learned leash without a question mark.
-MOCK.mapY = 0.62
+MOCK.pos.x = 980
 MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,9000,10000,1;guardian,14,Rhahk'Zor,20000,20000,0")
 MOCK.run(6, 60)
 expect(leashLabel() == "Mother Fang  20 / 60 yd", "leash bar with a learned leash: " .. tostring(leashLabel()))
@@ -395,18 +443,15 @@ MOCK.addon("AZSUNITS", "boss,11,Hogger,32000,80000,1;guardian,12,Mother Fang,900
 MOCK.run(6, 60)
 slash("leash 45")
 expect(SurvivorsLite.db.leash == 45 and SurvivorsLite.db.leashLearned == nil and SurvivorsLite.db.leashHeld == nil, "leash setting did not replace the learned one")
-MOCK.mapY = 0.62
 
--- Naxxramas has no zone map: your map position reads 0, 0 and the lair and chest lines carry
--- no map coordinates. The run line's world position places the pins, indoors at the indoor
--- scale (140 units for 300 yd), and the status list still says how far the lairs are.
-MOCK.mapX, MOCK.mapY = 0, 0
+-- Naxxramas has no zone map and the lines carry no map coordinates: your live position places
+-- the pins all the same, every frame instead of with the run line. Indoors the indoor scale
+-- (140 units for 300 yd) applies.
 MOCK.indoors = true
 MOCK.event("ZONE_CHANGED_NEW_AREA")
-MOCK.addon("AZSRUN", "ph=playing;t=300;sl=0;px=980;py=2000;pz=0;pf=0")
 MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,,,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,,,0;3,held,Rhahk'Zor,14,0,950,2050,0,,,0")
 MOCK.addon("AZSCHESTS", "8,1010,1990,0,0,0")
-local zoomSets, mapSets = MOCK.zoomSets, MOCK.mapSet or 0
+local zoomSets = MOCK.zoomSets
 MOCK.run(30, 60)
 lines = statusLines()
 expect(lines["Mother Fang"] == "asleep 90%  20 yd", "no lair distance without a zone map: " .. tostring(lines["Mother Fang"]))
@@ -415,28 +460,32 @@ expect(naxxPin and wears(naxxPin.tex, 4), "no pin 20 yd north without a zone map
 local naxxChest = pinAt(4.67, 14)
 expect(naxxChest and naxxChest.tip2 == "32 yd away", "no chest pin without a zone map")
 expect(MOCK.zoomSets == zoomSets + 2 and MOCK.zoom == 0 and MOCK.cvars.minimapInsideZoom == "0" and MOCK.cvars.minimapZoom == "0", "the indoor check did not step the zoom and back once: " .. (MOCK.zoomSets - zoomSets))
-MOCK.addon("AZSRUN", "ph=playing;t=301;sl=0;px=990;py=2000;pz=0;pf=0")
-MOCK.run(180, 60)
-expect(pinAt(0, 4.67), "the pin did not follow the run line's position")
-expect((MOCK.mapSet or 0) - mapSets <= 1, "the map was set to the zone every tick: " .. ((MOCK.mapSet or 0) - mapSets))
+MOCK.pos.x = 990
+MOCK.run(12, 60)
+expect(pinAt(0, 4.67), "the pin did not follow your live position")
 expect(MOCK.zoomSets == zoomSets + 2, "the indoor check stepped the zoom again")
--- Outdoors again, in a zone whose lines carry no usable map coordinates: the last zone's
--- map scale is not reused, the world position places the pin at the outdoor scale.
+-- While a teleport settles there is no position: pins wait instead of using the old place.
+MOCK.noPosition = "NOT_READY"
+MOCK.run(12, 60)
+expect(not pinAt(0, 4.67) and SurvivorsLite.LairDistance(AZS_LAIRS[1]) == nil, "a position from before the teleport was used")
+MOCK.noPosition = nil
+MOCK.pos.x = 980
 MOCK.indoors = nil
-MOCK.mapX, MOCK.mapY = 0.40, 0.62
 MOCK.event("ZONE_CHANGED_NEW_AREA")
-MOCK.addon("AZSRUN", "ph=playing;t=302;sl=0;px=980;py=2000;pz=0;pf=0")
-MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0,0,1")
-MOCK.addon("AZSCHESTS", "")
-MOCK.run(30, 60)
-expect(pinAt(0, 6), "a map scale from the last zone placed the pin")
--- Back in a zone with a map.
-MOCK.event("ZONE_CHANGED_NEW_AREA")
+MOCK.run(12, 60)
+expect(pinAt(0, 6), "outdoor scale did not come back")
+-- A build without the position call falls back on the run line.
+local realPosition = AZS_GetPlayerPosition
+AZS_GetPlayerPosition = nil
+MOCK.addon("AZSRUN", "ph=playing;t=302;sl=0;px=970;py=2000;pz=0;pf=0")
+MOCK.run(12, 60)
+expect(pinAt(0, 9), "no fallback on the run line's position")
+AZS_GetPlayerPosition = realPosition
 MOCK.addon("AZSRUN", "ph=playing;t=302;sl=0")
 MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0.40,0.60,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,0.45,0.55,0;3,held,Rhahk'Zor,14,0,950,2050,0,0.35,0.65,0")
 MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40;8,1010,1990,0,0.41,0.59")
 MOCK.run(30, 60)
-expect(pinAt(0, 6), "the outdoor scale did not come back")
+expect(pinAt(0, 6), "the pin did not come back on your position")
 
 -- The minimap gear opens the options.
 local gear
@@ -464,7 +513,7 @@ MOCK.run(30, 60)
 expect(p1._alpha == 0 and p1._mouse == false, "mobs hide did not hide plain plates")
 slash("plates off")
 MOCK.run(30, 60)
-expect(not overlay(boss)._shown and boss.mockBar._alpha == 1, "plates off left the boss styled")
+expect(not shownPlate(11) and boss._alpha == 1 and boss.mockBar._alpha == 1, "plates off left the boss styled")
 slash("plates on")
 slash("mobs bars")
 slash("scale 1.3")
@@ -494,7 +543,10 @@ local function shownDots(c)
     return n
 end
 
--- 8 yd grown by Area 1.25 at 23 units per yard: 230 units from the center.
+-- Flat circles first, as without the game's projection. 8 yd grown by Area 1.25 at 23 units
+-- per yard: 230 units from the center.
+slash("ground off")
+MOCK.run(2, 60)
 expect(first._shown and not second._shown and not pickup._shown, "default circles: only the first one")
 expect(near(dot(first, 1)[4], 230) and near(dot(first, 1)[5], 0), "first circle radius: " .. tostring(dot(first, 1)[4]))
 expect(first._point[2] == SurvivorsLite.center, "circle not centered on the character mark")
@@ -590,49 +642,103 @@ MOCK.run(40, 60)
 
 -- ---------------------------------------------------------------- ground circles
 
--- Flat until the saved view shows a live camera.
-expect(SurvivorsLite.db.ground and string.find(SurvivorsLite.CameraStatus(), "^Waiting"), "camera status before it is live: " .. tostring(SurvivorsLite.CameraStatus()))
-expect(near(dot(first, 1)[4], 12 * 1.5 * 30), "circle not flat before the camera is live")
--- The camera turns live: 30 yd away, looking down at 60 degrees.
-MOCK.camera = { d = 30, p = 60 }
-MOCK.run(40, 60)
-local function project(yards, t, d, p)
-    local f = 384 * math.cos(math.rad(27.5)) / math.sin(math.rad(27.5))
-    local sp, cp = math.sin(math.rad(p)), math.cos(math.rad(p))
-    local x, y = yards * math.cos(t * 2 * math.pi), yards * math.sin(t * 2 * math.pi)
-    local z = y * cp + d + 1.5 * sp
-    return f * x / z, f * (y * sp - 1.5 * cp) / z
+-- Back on the ground: the lair anchor plus your position reaches your feet and the ground
+-- around them. Area 1.5, radius 12: 18 yd.
+local function focal() return 384 * math.cos(math.rad(MOCK.cam.fov / 2)) / math.sin(math.rad(MOCK.cam.fov / 2)) end
+-- A point of ground from your feet, as a pinhole camera sees it, relative to your feet.
+local function ground(east, north)
+    local a = math.rad(MOCK.cam.p)
+    local sp, cp = math.sin(a), math.cos(a)
+    local d = MOCK.cam.d
+    local f = focal()
+    local z = north * cp + 1.5 * sp + d
+    local x0, y0 = 0, f * (-1.5 * cp) / (1.5 * sp + d)
+    return f * east / z - x0, f * (north * sp - 1.5 * cp) / z - y0
 end
-expect(string.find(SurvivorsLite.CameraStatus(), "^Camera read: 30.0 yd"), "camera status: " .. tostring(SurvivorsLite.CameraStatus()))
-local gx, gy = project(18, 0, 30, 60)
+local function feet()
+    local x, y = MOCK.project(MOCK.pos.x, MOCK.pos.y, MOCK.pos.z)
+    return x, y
+end
+local center = SurvivorsLite.center
+slash("ground on")
+MOCK.run(3, 60)
+expect(SurvivorsLite.projected and SurvivorsLite.GroundReady(), "not projected with a lair to measure from")
+local fx, fy = feet()
+expect(center._point[2] == WorldFrame and center._point[3] == "BOTTOMLEFT" and near(center._point[4], fx) and near(center._point[5], fy), "the center is not on your feet")
+expect(SurvivorsLiteHero._point[2] == center, "the hero bar does not follow your feet")
+local gx, gy = ground(18, 0)
 expect(near(dot(first, 1)[4], gx) and near(dot(first, 1)[5], gy), "ground circle side dot: " .. tostring(dot(first, 1)[4]) .. "," .. tostring(dot(first, 1)[5]))
 local n = shownDots(first)
 local farIdx, nearIdx = math.floor(n / 4) + 1, math.floor(3 * n / 4) + 1
-local _, farY = project(18, (farIdx - 1) / n, 30, 60)
-local _, nearY = project(18, (nearIdx - 1) / n, 30, 60)
+local ft = (farIdx - 1) / n * 2 * math.pi
+local _, farY = ground(18 * math.cos(ft), 18 * math.sin(ft))
+local nt = (nearIdx - 1) / n * 2 * math.pi
+local _, nearY = ground(18 * math.cos(nt), 18 * math.sin(nt))
 expect(near(dot(first, farIdx)[5], farY) and near(dot(first, nearIdx)[5], nearY), "ground circle far and near dots")
 expect(-nearY > farY, "near side not larger than the far side")
--- The wheel zooms in 10 yd: the next read shrinks nothing and grows the circle on screen.
-CameraZoomIn(10)
+expect(string.find(SurvivorsLite.WorldStatus(), "^On the ground, from a guardianLair anchor"), "world status: " .. SurvivorsLite.WorldStatus())
+slash("world")
+expect(chatHas("On the ground, from a guardianLair"), "world command")
+-- A hero walking does not move a dot: the camera follows and only the center would.
+local version = SurvivorsLite.groundVersion
+MOCK.pos.x, MOCK.pos.y = 990, 2010
 MOCK.run(6, 60)
-gx = project(18, 0, 20, 60)
-expect(near(dot(first, 1)[4], gx), "ground circle did not follow the zoom: " .. tostring(dot(first, 1)[4]))
--- Turning the camera down to 85 degrees flattens the perspective.
-MOCK.camera.p = 85
-MOCK.run(40, 60)
-local _, steepFar = project(18, (farIdx - 1) / n, 20, 85)
+expect(SurvivorsLite.groundVersion == version, "walking laid the circles out again")
+MOCK.pos.x, MOCK.pos.y = 980, 2000
+MOCK.run(2, 60)
+-- Zooming in 10 yd follows on the next frames.
+MOCK.cam.d = 20
+MOCK.run(4, 60)
+expect(near(dot(first, 1)[4], (ground(18, 0))), "ground circle did not follow the zoom: " .. tostring(dot(first, 1)[4]))
+-- The camera tilts: the perspective follows.
+MOCK.cam.p = 85
+MOCK.run(4, 60)
+ft = (farIdx - 1) / shownDots(first) * 2 * math.pi
+local _, steepFar = ground(18 * math.cos(ft), 18 * math.sin(ft))
 expect(near(dot(first, farIdx)[5], steepFar), "ground circle did not follow the pitch")
--- Logout puts view 5 back as it was.
-MOCK.event("PLAYER_LOGOUT")
-expect(MOCK.cvars.cameraDistanceD == "13.88" and MOCK.cvars.cameraPitchD == "10.0", "view 5 not restored at logout")
-slash("fov 70")
-expect(SurvivorsLite.db.fov == 70, "fov command")
-slash("fov 55")
-slash("camera")
-expect(chatHas("Camera read: "), "camera command")
--- Off: flat again.
+MOCK.cam.d, MOCK.cam.p = 30, 60
+MOCK.run(4, 60)
+-- At the UI scale the game's numbers are in WorldFrame's units: divided, as its doc says.
+UIParent._scale = 0.9
+MOCK.cam.d = 31
+MOCK.run(4, 60)
+fx, fy = feet()
+expect(near(center._point[4], fx / 0.9) and near(center._point[5], fy / 0.9), "UI scale pulled the center off your feet")
+expect(near(dot(first, 1)[4], (ground(18, 0)) / 0.9), "UI scale pulled the dots off the ground")
+UIParent._scale = 1
+MOCK.cam.d = 30
+MOCK.run(4, 60)
+-- Zoomed all the way in, the corners measured leave the screen: it measures closer to you.
+MOCK.cam.d = 3
+MOCK.run(30, 60)
+expect(SurvivorsLite.GroundReady() and near((SurvivorsLite.GroundPoint(1, 0)), (ground(1, 0))), "no ground when zoomed all the way in")
+MOCK.cam.d = 30
+MOCK.run(200, 60)
+expect(near((SurvivorsLite.GroundPoint(1, 0)), (ground(1, 0))), "did not measure wide again")
+-- Nothing left to measure from: flat after a second. A cache brings it back, and a place
+-- something fell also serves.
+MOCK.addon("AZSLAIRS", "")
+MOCK.addon("AZSCHESTS", "")
+MOCK.run(90, 60)
+expect(not SurvivorsLite.projected and center._point[2] == UIParent and string.find(SurvivorsLite.WorldStatus(), "^Waiting"), "no anchor left but still projected")
+expect(near(dot(first, 1)[4], 12 * 1.5 * 30), "circle not flat without an anchor")
+expect(SurvivorsLiteHero._point[2] == UIParent, "the hero bar did not go back without your feet")
+MOCK.addon("AZSCHESTS", "8,1010,1990,0,0,0")
+MOCK.run(70, 60)
+expect(SurvivorsLite.projected and string.find(SurvivorsLite.WorldStatus(), "cache anchor"), "a cache did not bring the ground back: " .. SurvivorsLite.WorldStatus())
+MOCK.addon("AZSCHESTS", "")
+MOCK.fallen = { { anchorId = "F1", kind = "enemy", state = "dead", positionAvailable = true, x = 1000, y = 2000, z = 0, mapId = 0, spaceId = "m0:r1", runId = "r1", unitId = 99, attachments = { "position" } } }
+MOCK.run(70, 60)
+expect(SurvivorsLite.projected and string.find(SurvivorsLite.WorldStatus(), "enemy anchor"), "a fallen enemy did not serve: " .. SurvivorsLite.WorldStatus())
+MOCK.fallen = {}
+MOCK.addon("AZSLAIRS", "4,held,Mother Fang,12,0,1000,2000,0,0.40,0.60,1;2,empty,Kobold Taskmaster,15,45,1050,1950,0,0.45,0.55,0;3,held,Rhahk'Zor,14,0,950,2050,0,0.35,0.65,0")
+MOCK.addon("AZSCHESTS", "7,1200,2300,0,0.10,0.40;8,1010,1990,0,0.41,0.59")
+MOCK.run(70, 60)
+expect(SurvivorsLite.projected, "the lair did not bring the ground back")
+-- Off: flat again, and the center where you left it.
 slash("ground off")
-expect(near(dot(first, 1)[4], 12 * 1.5 * 30), "ground off did not flatten the circle")
+MOCK.run(2, 60)
+expect(near(dot(first, 1)[4], 12 * 1.5 * 30) and center._point[2] == UIParent, "ground off did not flatten the circle")
 
 -- ---------------------------------------------------------------- options window
 
@@ -755,6 +861,49 @@ expect(not GameMenuFrame._shown and panel._shown, "game menu button did not open
 SlashCmdList["SURVIVORSLITE"]("options")
 expect(not panel._shown, "/slite options did not toggle the window closed")
 
+-- ---------------------------------------------------------------- friends who are down
+
+-- The game's list says where a friend fell, at any distance: the row, a marker on the spot and
+-- a pin on the minimap that points the way.
+MOCK.units.party1.hp = 900
+MOCK.event("UNIT_HEALTH", "party1")
+slash("party on")
+SlashCmdList["SURVIVORSLITE"]("downmark on")
+MOCK.addon("AZSDOWNED", "H2,Ayla,990,2000,0,5,down")
+MOCK.run(30, 60)
+expect(table.getn(SurvivorsLite.downed) == 1 and SurvivorsLite.downed[1].anchorStatus == "ready", "downed list: " .. table.getn(SurvivorsLite.downed))
+local function partyRow(pattern)
+    for i = 1, table.getn(MOCK.frames) do
+        local o = MOCK.frames[i]
+        if o._type == "FontString" and o._text and string.find(o._text, pattern) and o._parent and o._parent._parent and o._parent._parent._parent == SurvivorsLiteParty then return o end
+    end
+end
+expect(partyRow("^DOWN 10 yd$"), "the party row does not say how far the friend fell")
+local downMark
+for i = 1, table.getn(SurvivorsLiteMarkers._children) do
+    local c = SurvivorsLiteMarkers._children[i]
+    if c.label and c._shown and c.label._text then downMark = c end
+end
+expect(downMark and downMark.label._text == "Ayla  10 yd" and downMark._point[2] == WorldFrame, "no marker on the spot: " .. tostring(downMark and downMark.label._text))
+local downPin
+for i = 1, table.getn(Minimap._children) do
+    local c = Minimap._children[i]
+    if c._shown and c.tip == "Ayla" then downPin = c end
+end
+expect(downPin and downPin.tip2 == "Down, 10 yd away", "no minimap pin for a downed friend")
+-- Far away it stays on the minimap's edge and off screen its marker hides.
+MOCK.addon("AZSDOWNED", "H2,Ayla,2000,2000,0,5,down")
+MOCK.run(30, 60)
+expect(downPin._shown and downPin._alpha == 0.6 and not downMark._shown, "a far friend's pin or marker")
+expect(partyRow("^DOWN 1020 yd$"), "the party row did not follow")
+slash("downmark off")
+MOCK.run(30, 60)
+expect(not downPin._shown and not downMark._shown, "downmark off left the pin or marker")
+slash("downmark on")
+MOCK.addon("AZSDOWNED", "")
+MOCK.run(30, 60)
+expect(table.getn(SurvivorsLite.downed) == 0 and not downMark._shown and not partyRow("^DOWN"), "a friend back up still shows as down")
+
 -- Party leaves: friendly plates go back off.
 MOCK.units.party1 = nil
 MOCK.event("PARTY_MEMBERS_CHANGED")
@@ -805,7 +954,7 @@ local function statColor(label)
     local c = statCells()[label]
     return c and c.value._tc
 end
-MOCK.addon("AZSZONE", "len=900")
+MOCK.addon("AZSZONE", "len=900;map=0;run=r1")
 MOCK.addon("AZS", "hp=2000;dmg=1.2;cd=0.9;crit=0.1;cm=1.5;arm=0.15;reg=1.5;area=1.25;cnt=1;echo=0.05;spd=1.1;pick=12;xp=1;luck=0;gold=1;heal=0;"
     .. "ghp=150;gdmg=0.1;gcd=0;gcrit=0;gcm=0;garm=0;greg=0;garea=0;gcnt=0;gecho=0;gspd=0;gpick=0;ggold=0;"
     .. "lch=0.05;thn=0;liv=2;bp=0;dots=1;doth=0;big=0.2;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
@@ -843,7 +992,7 @@ expect(not statsFrame._shown, "stats off left the panel")
 slash("stats")
 expect(SurvivorsLite.db.stats == "raised" and statsFrame._shown and not statText("Kill Heal"), "stats did not come back as raised")
 -- A new run starts lower: no red numbers for it.
-MOCK.addon("AZSZONE", "len=900")
+MOCK.addon("AZSZONE", "len=900;map=0;run=r1")
 MOCK.addon("AZS", "hp=1000;dmg=1;cd=1;crit=0.05;cm=1.5;arm=0;reg=0;area=1;cnt=0;echo=0;spd=1;pick=8;xp=1;luck=0;gold=1;heal=0;"
     .. "lch=0;thn=0;liv=0;bp=0;dots=1;doth=0;big=0;exe=0;cc=0;dotd=0;shd=0;auto=0;pet=0")
 MOCK.run(6, 60)
@@ -854,8 +1003,8 @@ MOCK.addon("AZS", "hp=1100;dmg=1;cd=1;crit=0.05;cm=1.5;arm=0;reg=0;area=1;cnt=0;
 MOCK.run(6, 60)
 expect(same(statColor("Health"), { 0.4, 1, 0.4 }), "the new run's second line shows no change")
 
--- Damage meter: the run's meter lines as bars, the longest the top line's, with icons from
--- the action bar and the talents' clocks, a tab for each of the run's meters.
+-- Damage meter: the game's meter API as bars, the longest the top row's, each source with its
+-- own icon, a tab for each of the game's meters.
 local meter = SurvivorsLiteMeter
 local function meterRows()
     local out = {}
@@ -877,62 +1026,188 @@ local function meterTab(label)
         if b.text and b.text._text == label then return b end
     end
 end
-MOCK.addon("AZSTIMERS", "Ignite,Spell_Fire_Incinerate,cooldown,130,60")
-MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0;Ignite,15000,250,0.3,1;Rend,5000,83,0.1,0")
-MOCK.run(30, 60)
+local function barW(f) return math.floor(230 * f + 0.5) end
+local EV = { key = "ability:eviscerate:r3", ability = "eviscerate", name = "Eviscerate", icon = "Interface\\Icons\\Spell_Shadow_ShadowBolt", amount = 30000, rate = 500, recent = 900 }
+local IG = { key = "talent:mage.ignite:r1", name = "Ignite", icon = "Interface\\Icons\\Spell_Fire_Incinerate", amount = 15000, rate = 250 }
+local RD = { key = "ability:rend:r1", ability = "rend", name = "Rend", amount = 5000, rate = 83 }
+MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0")
+MOCK.meterSet("damage", { EV, IG, RD })
+MOCK.addon("AZSM", "x")
+MOCK.run(60, 60)
 local mrows = meterRows()
 expect(meter._shown and table.getn(mrows) == 3, "meter rows: " .. table.getn(mrows))
 expect(mrows[1].name._text == "Eviscerate" and mrows[1].value._text == "500  60%", "meter top row: " .. tostring(mrows[1].value._text))
 expect(mrows[2].value._text == "250  30%" and mrows[3].value._text == "83  10%", "meter shares")
 expect(meterText(" dps$") == "833 dps", "meter total: " .. tostring(meterText(" dps$")))
-expect(mrows[1].fill._w == 210 and mrows[2].fill._w == 105 and mrows[3].fill._w == 35, "meter bars not by the top line: "
+expect(mrows[1].fill._w == 230 and mrows[2].fill._w == 115 and mrows[3].fill._w == barW(1 / 6), "meter bars not by the top row: "
     .. tostring(mrows[1].fill._w) .. " " .. tostring(mrows[2].fill._w) .. " " .. tostring(mrows[3].fill._w))
 expect(mrows[1].fill._tex == SurvivorsLite.MEDIA .. "bar", "meter bars without their texture")
-expect(mrows[1].icon._shown and mrows[1].icon._tex == "Interface\\Icons\\Spell_Shadow_ShadowBolt", "action bar spell has no icon in the meter")
-expect(mrows[2].icon._shown and mrows[2].icon._tex == "Interface\\Icons\\Spell_Fire_Incinerate", "talent clock icon missing in the meter")
-expect(not mrows[3].icon._shown and mrows[3].rank._text == "3", "a spell without an icon shows no rank")
+expect(mrows[1].icon._shown and mrows[1].icon._tex == EV.icon, "a spell has no icon in the meter")
+expect(mrows[2].icon._shown and mrows[2].icon._tex == IG.icon, "a talent has no icon in the meter")
+expect(not mrows[3].icon._shown and mrows[3].rank._text == "3", "a source whose icon is missing shows no rank")
 local evisColor = mrows[1].fill._vc
 expect(not same(mrows[1].fill._vc, mrows[2].fill._vc) and not same(mrows[2].fill._vc, mrows[3].fill._vc), "meter rows share a color")
 MOCK.fire(mrows[1], "OnEnter")
 local tipText = table.concat(MOCK.tipLines or {}, ";")
 expect(MOCK.tip == "Eviscerate" and tipText == "Damage=30,000;Per second=500;Share=60%", "meter tooltip: " .. tipText)
 MOCK.fire(mrows[1], "OnLeave")
--- A new line reorders them; a spell keeps its color and the bars glide there.
-MOCK.addon("AZSMETER", "Ignite,60000,700,0.6,1;Eviscerate,30000,350,0.3,0;Rend,5000,50,0.05,0;Blood Fury,4000,40,0.04,0;Hemorrhage,1000,10,0.01,0")
+-- A new rank is a new key, reordered: the ability keeps its color and the bars glide there.
+MOCK.meterSet("damage", { { key = "ability:eviscerate:r4", ability = "eviscerate", name = "Eviscerate", icon = EV.icon, amount = 30000, rate = 350, recent = 800 },
+    { key = "talent:mage.ignite:r1", name = "Ignite", icon = IG.icon, amount = 60000, rate = 700 }, RD,
+    { key = "ability:fury:r1", ability = "fury", name = "Blood Fury", amount = 4000, rate = 40 },
+    { key = "ability:hemo:r1", ability = "hemo", name = "Hemorrhage", amount = 1000, rate = 10 } })
+MOCK.addon("AZSM", "x")
 MOCK.run(3, 60)
 mrows = meterRows()
-expect(table.getn(mrows) == 5 and mrows[2].name._text == "Eviscerate" and same(mrows[2].fill._vc, evisColor), "a spell changed its color")
-expect(mrows[3].fill._w > 18 and mrows[3].fill._w < 35, "meter bar jumped instead of gliding: " .. tostring(mrows[3].fill._w))
+expect(table.getn(mrows) == 5 and mrows[2].name._text == "Eviscerate" and same(mrows[2].fill._vc, evisColor), "a spell changed its color with its rank")
+expect(mrows[3].fill._w > barW(5 / 60) and mrows[3].fill._w < barW(1 / 6), "meter bar jumped instead of gliding: " .. tostring(mrows[3].fill._w))
 MOCK.run(60, 60)
-expect(mrows[3].fill._w == 18 and mrows[2].fill._w == 105 and mrows[1].fill._w == 210, "meter bar did not arrive: " .. tostring(mrows[3].fill._w))
+expect(mrows[3].fill._w == barW(5 / 60) and mrows[2].fill._w == 115 and mrows[1].fill._w == 230, "meter bar did not arrive: " .. tostring(mrows[3].fill._w))
 slash("rows 3")
 expect(table.getn(meterRows()) == 3 and SurvivorsLite.db.meterRows == 3, "meter rows setting ignored")
 slash("rows 8")
--- The party tab: a hero a row in class colors with the class icon, your own name in gold.
+-- A quiet meter does not read again.
+local reads = 0
+local realSnapshot = AZS_GetMeterSnapshot
+AZS_GetMeterSnapshot = function(q) reads = reads + 1; return realSnapshot(q) end
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+expect(reads == 0, "a meter whose counters did not move was read again: " .. reads)
+-- A window: the rate covers the last seconds, and the tooltip says both. 1 to 4 become 5.
+slash("window 3")
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+expect(reads > 0, "a window does not read")
+AZS_GetMeterSnapshot = realSnapshot
+mrows = meterRows()
+expect(mrows[2].value._text == "800  30%", "windowed rate: " .. tostring(mrows[2].value._text))
+expect(mrows[1].value._text == "700  60%", "a source without a recent rate keeps its average: " .. tostring(mrows[1].value._text))
+MOCK.fire(mrows[2], "OnEnter")
+expect(table.concat(MOCK.tipLines, ";") == "Damage=30,000;Per second=350;Last 5 s=800;Share=30%", "windowed tooltip: " .. table.concat(MOCK.tipLines, ";"))
+MOCK.fire(mrows[2], "OnLeave")
+slash("window 0")
+-- Your own reset: counts from here on, the game's numbers stay.
+local resetBtn
+for i = 1, table.getn(meter._children) do
+    local b = meter._children[i]
+    if b.text and b.text._text == "Reset" then resetBtn = b end
+end
+expect(resetBtn and resetBtn._shown, "no reset button")
+MOCK.click(resetBtn)
+expect(resetBtn.text._text == "All", "the reset button does not offer the whole run")
+MOCK.run(30, 60)
+expect(table.getn(meterRows()) == 0 and meterText("^No damage yet%.$"), "reset did not clear the rows")
+MOCK.meterSet("damage", { { key = "ability:eviscerate:r4", ability = "eviscerate", name = "Eviscerate", icon = EV.icon, amount = 31000, rate = 350 },
+    { key = "talent:mage.ignite:r1", name = "Ignite", icon = IG.icon, amount = 60000, rate = 700 }, RD })
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+mrows = meterRows()
+expect(table.getn(mrows) == 1 and mrows[1].name._text == "Eviscerate" and mrows[1].slTip[1][2] == "1,000", "amounts since the reset: " .. tostring(mrows[1] and mrows[1].slTip[1][2]))
+-- A /reload ends the reset point: back to the whole run, without an error.
+MOCK.meter.checkpoints = {}
+MOCK.meterSet("damage", MOCK.meter.tabs.damage)
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+expect(table.getn(meterRows()) == 3 and resetBtn.text._text == "Reset", "an ended reset point did not go back to the whole run")
+MOCK.click(resetBtn)
+MOCK.click(resetBtn)
+expect(resetBtn.text._text == "Reset" and table.getn(meterRows()) == 3, "the button did not go back to the whole run")
+-- While the game catches up after a /reload the rows stay, and it asks again.
+MOCK.meter.down = "NOT_READY"
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+expect(table.getn(meterRows()) == 3, "rows left while the game catches up")
+MOCK.meter.down = nil
+MOCK.meterSet("damage", { EV })
+MOCK.run(30, 60)
+expect(table.getn(meterRows()) == 1, "the meter did not ask again after it caught up")
+MOCK.meterSet("damage", { EV, IG, RD })
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
+-- The party tab: a hero a row in class colors with the class icon, your own name in gold, the
+-- hero's best spells asked for when you point at it.
 MOCK.click(meterTab("Party"))
 MOCK.addon("AZSPARTY", "Ayla,mage,100000,1234,0.5,Fireball,200;Hero,warlock,60000,700,0.3,Shadow Bolt,500")
+MOCK.meterSet("party", { { key = "H2", name = "Ayla", class = "mage", amount = 100000, rate = 1234 }, { key = "H1", name = "Hero", class = "warlock", amount = 60000, rate = 700 } })
+MOCK.meter.owners.H1 = { { key = "ability:bolt:r3", name = "Shadow Bolt", amount = 40000, rate = 500 }, { key = "ability:corr:r1", name = "Corruption", amount = 20000, rate = 200 } }
+MOCK.addon("AZSM", "x")
 MOCK.run(60, 60)
 mrows = meterRows()
 expect(SurvivorsLite.db.meterMode == "party" and table.getn(mrows) == 2 and mrows[1].name._text == "Ayla", "party tab")
 expect(same(mrows[1].fill._vc, { 0.41, 0.80, 0.94, 0.92 }) and mrows[1].icon._shown and mrows[1].icon._coords[2] == 0.49609375, "party row not in its class look")
-expect(same(mrows[2].name._tc, { 1, 0.82, 0 }) and mrows[2].fill._w == 126, "your own party row")
+expect(same(mrows[2].name._tc, { 1, 0.82, 0 }) and mrows[2].fill._w == 138, "your own party row: " .. tostring(mrows[2].fill._w))
 MOCK.fire(mrows[2], "OnEnter")
-expect(table.concat(MOCK.tipLines, ";") == "Damage=60,000;Per second=700;Share=38%;Best spell=Shadow Bolt, 500 dps", "party tooltip: " .. table.concat(MOCK.tipLines, ";"))
+expect(table.concat(MOCK.tipLines, ";") == "Damage=60,000;Per second=700;Share=38%;Shadow Bolt=500 dps;Corruption=200 dps", "party tooltip: " .. table.concat(MOCK.tipLines, ";"))
 MOCK.fire(mrows[2], "OnLeave")
 -- An empty tab says so; healing counts per second as hps.
 MOCK.click(meterTab("Boss"))
 MOCK.run(15, 60)
 expect(table.getn(meterRows()) == 0 and meterText("^No boss fight yet%.$"), "empty boss tab")
 MOCK.click(meterTab("Heal"))
+MOCK.meterSet("healing", { { key = "ability:drain:r1", name = "Drain Life", amount = 8000, rate = 90 } })
 MOCK.addon("AZSHEAL", "Drain Life,8000,90,1,0")
-MOCK.run(15, 60)
+MOCK.addon("AZSM", "x")
+MOCK.run(30, 60)
 expect(table.getn(meterRows()) == 1 and meterText(" hps$") == "90 hps", "healing tab: " .. tostring(meterText("ps$")))
 slash("meter off")
 expect(not meter._shown, "meter off left the meter")
 slash("meter on")
 MOCK.click(meterTab("Damage"))
 MOCK.run(15, 60)
-expect(meter._shown and SurvivorsLite.db.meterMode == "damage" and table.getn(meterRows()) == 5, "meter did not come back")
+expect(meter._shown and SurvivorsLite.db.meterMode == "damage" and table.getn(meterRows()) == 3, "meter did not come back")
+-- A build without the meter API draws the plain lines, without icons or a reset.
+local realContext = AZS_GetMeterContext
+AZS_GetMeterContext = nil
+MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0;Ignite,15000,250,0.3,1;Rend,5000,83,0.1,0;Soul Fire,1000,10,0.02,0")
+MOCK.run(30, 60)
+mrows = meterRows()
+expect(table.getn(mrows) == 4 and mrows[1].value._text == "500  59%" and not mrows[1].icon._shown and mrows[1].rank._text == "1", "plain lines fallback: " .. tostring(mrows[1] and mrows[1].value._text))
+expect(not resetBtn._shown, "a reset button without the meter API")
+AZS_GetMeterContext = realContext
+slash("meter on")
+MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0")
+
+-- ---------------------------------------------------------------- the game's own HUD
+
+-- Parts this addon replaces can go, only while it replaces them, and come back at logout.
+expect(MOCK.cvars.hudMeter == nil, "the game's meter touched without being asked")
+slash("hidemeter on")
+expect(MOCK.cvars.hudMeter == "0" and AZS_IsHudShown("meter") == false, "hidemeter did not hide the game's meter")
+slash("meter off")
+expect(MOCK.cvars.hudMeter == "1", "the game's meter stayed hidden with this addon's off")
+slash("meter on")
+expect(MOCK.cvars.hudMeter == "0", "the game's meter did not go again")
+slash("hidemeter off")
+expect(MOCK.cvars.hudMeter == "1", "hidemeter off did not bring it back")
+-- A part you turned off yourself in the game's options stays off.
+MOCK.cvars.hudFlag = "0"
+slash("hideflag on")
+slash("hideflag off")
+expect(MOCK.cvars.hudFlag == "0", "a part hidden in the game's options came back")
+MOCK.cvars.hudFlag = nil
+slash("hidebosses on")
+expect(MOCK.cvars.hudBosses == "0", "hidebosses did not hide the game's bars")
+MOCK.event("PLAYER_LOGOUT")
+expect(MOCK.cvars.hudBosses == "1", "logout left the game's bars hidden")
+slash("hidebosses off")
+
+-- Frames over the level-up cards, their tooltips too; off puts them back under.
+expect(AZS_IsOnTopOfScreens(SurvivorsLiteStats) and AZS_IsOnTopOfScreens("SurvivorsLiteBar") and AZS_IsOnTopOfScreens("SurvivorsLiteMeter") and AZS_IsOnTopOfScreens("GameTooltip"), "frames not kept over the cards")
+expect(not AZS_IsOnTopOfScreens("SurvivorsLiteHero"), "the hero bar sits over the cards")
+slash("overcards off")
+expect(not AZS_IsOnTopOfScreens("SurvivorsLiteStats") and not AZS_IsOnTopOfScreens("GameTooltip"), "overcards off left them on top")
+slash("overcards on")
+
+-- The options window still fits with everything in it.
+slash("")
+for i = 1, table.getn(panel._children) do
+    local c = panel._children[i]
+    local pt = c._point
+    if pt and pt[1] == "TOPLEFT" and pt[2] == panel then
+        expect(-pt[5] + c._h <= panel._h - 40, "option off the window at " .. tostring(pt[5]))
+    end
+end
+slash("options")
 
 -- Alterac Valley: the game's layout pass cannot find MinimapCluster. No error window, and the
 -- chat dock and bags are still placed; any other error still comes through.
@@ -948,7 +1223,9 @@ MOCK.layoutError = nil
 layoutOk = pcall(UIParent_ManageFramePositions)
 expect(layoutOk and MOCK.dockUpdates == docks + 2 and MOCK.bagAnchors == bags + 2, "layout pass broke where it works")
 
--- Busy fight: 600 frames with plates cycling and health changing, measured by /slite perf.
+-- Busy fight: 600 frames with plates cycling and health changing, measured by /slite perf,
+-- with a circle on the ground.
+slash("ground on")
 slash("perf")
 local k = 0
 MOCK.onFrame = function(n)
@@ -961,11 +1238,13 @@ MOCK.onFrame = function(n)
             p:Show()
         end
     end
-    boss.mockBar:SetValue(math.mod(n, 100))
     if math.mod(n, 6) == 0 then
         MOCK.addon("AZSUNITS", "boss,11,Hogger," .. (50000 - n) .. ",80000,1;guardian,12,Mother Fang,9000,10000,0")
         MOCK.addon("AZSTIMERS", "Cheat Death,Ability_Rogue_CheatDeath,cooldown,130,60")
+        MOCK.meterSet("damage", { { key = "talent:mage.ignite:r1", name = "Ignite", icon = IG.icon, amount = 60000 + n * 50, rate = 700 },
+            { key = "ability:eviscerate:r4", ability = "eviscerate", name = "Eviscerate", icon = EV.icon, amount = 30000 + n * 90, rate = 350 }, RD })
         MOCK.addon("AZSMETER", "Ignite," .. (60000 + n * 50) .. ",700,0.6,1;Eviscerate," .. (30000 + n * 90) .. ",350,0.3,0;Rend,5000,50,0.05,0")
+        MOCK.addon("AZSM", "x")
         MOCK.event("PLAYER_AURAS_CHANGED")
         MOCK.event("UNIT_HEALTH", "player")
     end
