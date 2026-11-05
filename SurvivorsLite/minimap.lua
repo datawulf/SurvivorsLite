@@ -96,7 +96,7 @@ end
 
 -- ---------------------------------------------------------------- the leash bar
 
-local leashBar = CreateFrame("Frame", "SurvivorsLiteLeash", UIParent)
+local leashBar = CreateFrame("Frame", "SurvivorsLiteLeash", SL.under)
 leashBar:SetFrameStrata("LOW")
 leashBar:SetWidth(120)
 leashBar:SetHeight(5)

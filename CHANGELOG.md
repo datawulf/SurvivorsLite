@@ -3,6 +3,18 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.11.1 - 2026-11-05
+
+- Fixed the black bar across the middle level-up card. It was the hero bar's backing.
+- Hero bar, status list, party rows, circles and markers now hide while you choose a card.
+  They stay with `/slite overcards off`.
+- Meter rows now show each sum next to the rate. Rates read like the game's meter:
+  `98.04m  103.4k  66%`.
+- The game's boss and guardian bars at the top now hide by default. The plates on the units
+  and the status list replace them. `/slite hidebosses off` brings them back.
+- The game's character and party frames now hide while the hero bar and party rows show.
+  `/slite hideplayer off` and `/slite hideparty off` bring them back. Your pet's frame stays.
+
 ## 1.11.0 - 2026-11-05
 
 SurvivorsLite now runs on the game's official addon API.

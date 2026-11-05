@@ -10,7 +10,7 @@ local M = SL.Module({})
 local ROW_W, ROW_H, GAP = 176, 18, 5
 local BAR_W = 140
 
-local frame = CreateFrame("Frame", "SurvivorsLiteParty", UIParent)
+local frame = CreateFrame("Frame", "SurvivorsLiteParty", SL.under)
 frame:SetFrameStrata("LOW")
 frame:SetWidth(ROW_W)
 frame:SetHeight(4 * (ROW_H + GAP))

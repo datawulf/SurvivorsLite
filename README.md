@@ -48,8 +48,9 @@ Entertainment.
   Reset counts from now on without touching the game's numbers, and All goes back to the
   whole run. `/slite rows 3-15` sets how many rows show, `/slite window 5-120` makes damage
   per second cover the last seconds.
-- The game's own meter, boss bars and lair flag can be hidden while this addon replaces
-  them (off by default, back at logout). The run stats, action bar, jewelry and meter stay
+- The game's own boss bars are hidden while this addon's plates or status list show. Its
+  meter and lair flag can be hidden too (off by default). All come back at logout. Its
+  character and party frames are hidden while the hero bar and party rows show. The run stats, action bar, jewelry and meter stay
   over the level-up cards.
 - Every guardian's lair has a look of its own, by its place in the run's lair line: a
   dragon head in a color of its own (red, blue, green, bronze, purple), drawn for this
@@ -120,18 +121,21 @@ Seen working in game (player screenshots and reports):
 - Thin health bars for plain enemies.
 - The boss status list.
 - The range circle and skill circles, flat on the screen.
+- Each meter row's sum, rate and share (1.11.1).
+- Hiding the game's character frame and getting it back (1.11.1).
 
 New in 1.11.0 on the game's official API, not confirmed in game yet:
 
 - Circles on the ground and the ring, hero bar and warnings on your feet. `/slite world`
   says what they measure from.
-- Boss and guardian plates over the exact unit, with name plates off too. The old plates
-  on the client's name plates were seen working in game.
+- Boss plates over the exact unit, with name plates off too. The guardian's plate was seen
+  working this way in game, and so were the old plates on the client's name plates.
 - Minimap pins and lair distances from your live position on every map.
 - The damage meter from the meter API: every source's icon, Reset and `/slite window`.
 - The run stats, action bar, jewelry and meter over the level-up cards.
 - Hiding the game's meter, boss bars and lair flag, and getting them back at logout.
 - "DOWN 34 yd" on party rows, the marker on the spot and the minimap pin.
+- New in 1.11.1: hiding the game's party frames and no black bar on the level-up cards.
 
 Not confirmed in game yet:
 
@@ -257,8 +261,10 @@ leash slider or `/slite leash N` forgets what play taught.
 | `/slite tilt 0.3-1` | flat circle height for a camera that looks in from the side |
 | `/slite overcards on/off` | run stats, action bar, jewelry and meter over the level-up cards |
 | `/slite hidemeter on/off` | hide the game's meter while this addon's shows |
-| `/slite hidebosses on/off` | hide the game's boss bars while this addon's show |
+| `/slite hidebosses on/off` | hide the game's boss bars while this addon's show (on by default) |
 | `/slite hideflag on/off` | hide the game's lair flag while this addon's pins show |
+| `/slite hideplayer on/off` | hide the game's character frame while the hero bar shows (on by default) |
+| `/slite hideparty on/off` | hide the game's party frames while the party rows show (on by default) |
 | `/slite scale 0.6-2` | size of the hero bar, party frames and list |
 | `/slite perf` | measures this addon's own Lua time for 10 seconds |
 | `/slite reset` | default settings and positions |

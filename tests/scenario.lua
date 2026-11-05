@@ -1036,8 +1036,8 @@ MOCK.addon("AZSM", "x")
 MOCK.run(60, 60)
 local mrows = meterRows()
 expect(meter._shown and table.getn(mrows) == 3, "meter rows: " .. table.getn(mrows))
-expect(mrows[1].name._text == "Eviscerate" and mrows[1].value._text == "500  60%", "meter top row: " .. tostring(mrows[1].value._text))
-expect(mrows[2].value._text == "250  30%" and mrows[3].value._text == "83  10%", "meter shares")
+expect(mrows[1].name._text == "Eviscerate" and mrows[1].value._text == "30.0k  500  60%", "meter top row: " .. tostring(mrows[1].value._text))
+expect(mrows[2].value._text == "15.0k  250  30%" and mrows[3].value._text == "5.0k  83  10%", "meter shares")
 expect(meterText(" dps$") == "833 dps", "meter total: " .. tostring(meterText(" dps$")))
 expect(mrows[1].fill._w == 230 and mrows[2].fill._w == 115 and mrows[3].fill._w == barW(1 / 6), "meter bars not by the top row: "
     .. tostring(mrows[1].fill._w) .. " " .. tostring(mrows[2].fill._w) .. " " .. tostring(mrows[3].fill._w))
@@ -1080,8 +1080,8 @@ MOCK.run(30, 60)
 expect(reads > 0, "a window does not read")
 AZS_GetMeterSnapshot = realSnapshot
 mrows = meterRows()
-expect(mrows[2].value._text == "800  30%", "windowed rate: " .. tostring(mrows[2].value._text))
-expect(mrows[1].value._text == "700  60%", "a source without a recent rate keeps its average: " .. tostring(mrows[1].value._text))
+expect(mrows[2].value._text == "30.0k  800  30%", "windowed rate: " .. tostring(mrows[2].value._text))
+expect(mrows[1].value._text == "60.0k  700  60%", "a source without a recent rate keeps its average: " .. tostring(mrows[1].value._text))
 MOCK.fire(mrows[2], "OnEnter")
 expect(table.concat(MOCK.tipLines, ";") == "Damage=30,000;Per second=350;Last 5 s=800;Share=30%", "windowed tooltip: " .. table.concat(MOCK.tipLines, ";"))
 MOCK.fire(mrows[2], "OnLeave")
@@ -1139,6 +1139,21 @@ expect(same(mrows[2].name._tc, { 1, 0.82, 0 }) and mrows[2].fill._w == 138, "you
 MOCK.fire(mrows[2], "OnEnter")
 expect(table.concat(MOCK.tipLines, ";") == "Damage=60,000;Per second=700;Share=38%;Shadow Bolt=500 dps;Corruption=200 dps", "party tooltip: " .. table.concat(MOCK.tipLines, ";"))
 MOCK.fire(mrows[2], "OnLeave")
+-- Rates read as in the game's meter window, so the two match side by side.
+local partyWas = MOCK.meter.tabs.party
+MOCK.meterSet("party", { { key = "H2", name = "Ayla", class = "mage", amount = 98040000, rate = 103400 }, { key = "H1", name = "Hero", class = "warlock", amount = 51330000, rate = 54100 } })
+MOCK.addon("AZSM", "x")
+MOCK.run(60, 60)
+mrows = meterRows()
+expect(mrows[1].value._text == "98.04m  103.4k  66%" and mrows[2].value._text == "51.33m  54.1k  34%", "party rates: " .. tostring(mrows[1].value._text) .. " / " .. tostring(mrows[2].value._text))
+expect(meterText(" dps$") == "157.5k dps", "party total: " .. tostring(meterText(" dps$")))
+MOCK.meterSet("party", { { key = "H2", name = "Ayla", class = "mage", amount = 9000000, rate = 1234567 } })
+MOCK.addon("AZSM", "x")
+MOCK.run(60, 60)
+expect(meterRows()[1].value._text == "9.00m  1.23m  100%", "rate in millions: " .. tostring(meterRows()[1].value._text))
+MOCK.meterSet("party", partyWas)
+MOCK.addon("AZSM", "x")
+MOCK.run(60, 60)
 -- An empty tab says so; healing counts per second as hps.
 MOCK.click(meterTab("Boss"))
 MOCK.run(15, 60)
@@ -1161,7 +1176,7 @@ AZS_GetMeterContext = nil
 MOCK.addon("AZSMETER", "Eviscerate,30000,500,0.6,0;Ignite,15000,250,0.3,1;Rend,5000,83,0.1,0;Soul Fire,1000,10,0.02,0")
 MOCK.run(30, 60)
 mrows = meterRows()
-expect(table.getn(mrows) == 4 and mrows[1].value._text == "500  59%" and not mrows[1].icon._shown and mrows[1].rank._text == "1", "plain lines fallback: " .. tostring(mrows[1] and mrows[1].value._text))
+expect(table.getn(mrows) == 4 and mrows[1].value._text == "30.0k  500  59%" and not mrows[1].icon._shown and mrows[1].rank._text == "1", "plain lines fallback: " .. tostring(mrows[1] and mrows[1].value._text))
 expect(not resetBtn._shown, "a reset button without the meter API")
 AZS_GetMeterContext = realContext
 slash("meter on")
@@ -1185,11 +1200,37 @@ slash("hideflag on")
 slash("hideflag off")
 expect(MOCK.cvars.hudFlag == "0", "a part hidden in the game's options came back")
 MOCK.cvars.hudFlag = nil
+-- The plate on the unit replaces the game's bar at the top unless you say otherwise.
+expect(MOCK.cvars.hudBosses == "0", "the game's boss bars are not hidden by default")
 slash("hidebosses on")
 expect(MOCK.cvars.hudBosses == "0", "hidebosses did not hide the game's bars")
 MOCK.event("PLAYER_LOGOUT")
 expect(MOCK.cvars.hudBosses == "1", "logout left the game's bars hidden")
 slash("hidebosses off")
+
+-- Our hero bar and party rows replace the stock frames, which stay parked whatever the client
+-- shows, and go home when the option or the replacement is off. The pet's frame stays up.
+PlayerFrame = CreateFrame("Button", "PlayerFrame", UIParent)
+PetFrame = CreateFrame("Button", "PetFrame", PlayerFrame)
+PartyMemberFrame1 = CreateFrame("Button", "PartyMemberFrame1", UIParent)
+slash("hideplayer on")
+expect(SurvivorsLite.db.hideplayer and SurvivorsLite.db.hideparty, "stock frames not hidden by default")
+expect(not PlayerFrame:IsVisible() and not PartyMemberFrame1:IsVisible(), "stock frames stayed up")
+expect(PetFrame:IsVisible(), "the pet's frame left with the character frame")
+PlayerFrame:Show()
+expect(not PlayerFrame:IsVisible(), "the client's Show brought the character frame back")
+slash("hideplayer off")
+expect(PlayerFrame:IsVisible() and PetFrame:GetParent() == PlayerFrame, "hideplayer off did not bring it back")
+expect(not PartyMemberFrame1:IsVisible(), "hideplayer off changed the party frames")
+slash("party off")
+expect(PartyMemberFrame1:IsVisible(), "party rows off left the party with no frames")
+slash("party on")
+slash("hideplayer on")
+expect(not PlayerFrame:IsVisible(), "hideplayer on did not hide it again")
+slash("hero off")
+expect(PlayerFrame:IsVisible(), "hero bar off left you with no character frame")
+slash("hero on")
+PlayerFrame, PetFrame, PartyMemberFrame1 = nil, nil, nil
 
 -- Frames over the level-up cards, their tooltips too; off puts them back under.
 expect(AZS_IsOnTopOfScreens(SurvivorsLiteStats) and AZS_IsOnTopOfScreens("SurvivorsLiteBar") and AZS_IsOnTopOfScreens("SurvivorsLiteMeter") and AZS_IsOnTopOfScreens("GameTooltip"), "frames not kept over the cards")
@@ -1197,6 +1238,31 @@ expect(not AZS_IsOnTopOfScreens("SurvivorsLiteHero"), "the hero bar sits over th
 slash("overcards off")
 expect(not AZS_IsOnTopOfScreens("SurvivorsLiteStats") and not AZS_IsOnTopOfScreens("GameTooltip"), "overcards off left them on top")
 slash("overcards on")
+
+-- While the cards are up the frames under them leave (the client paints their backings over the
+-- cards), the ones kept on top stay, and each comes back as it was.
+local heroWas, partyWas = SurvivorsLiteHero:IsShown(), SurvivorsLiteParty:IsShown()
+local phaseWas = AZS_RUN.ph
+slash("hero on")
+AZS_RUN.ph = "choosing"
+MOCK.run(10)
+expect(not SurvivorsLiteHero:IsVisible(), "the hero bar stayed up behind the cards")
+expect(not SurvivorsLiteMarkers:IsVisible(), "the markers stayed up behind the cards")
+expect(not SurvivorsLiteLeash:IsVisible(), "the leash bar stayed up behind the cards")
+expect(SurvivorsLiteStats:IsShown() == SurvivorsLiteStats:IsVisible(), "a frame kept on top left with the cards")
+slash("overcards off")
+MOCK.run(10)
+expect(SurvivorsLiteHero:IsVisible(), "overcards off still hid the hero bar")
+slash("overcards on")
+MOCK.run(10)
+expect(not SurvivorsLiteHero:IsVisible(), "overcards on did not hide the hero bar again")
+AZS_RUN.ph = "playing"
+MOCK.run(10)
+expect(SurvivorsLiteHero:IsVisible(), "the hero bar did not come back after the cards")
+expect(SurvivorsLiteMarkers:IsVisible(), "the markers did not come back after the cards")
+AZS_RUN.ph = phaseWas
+if not heroWas then slash("hero off") end
+expect(SurvivorsLiteParty:IsShown() == partyWas, "the cards changed a frame's own shown state")
 
 -- The options window still fits with everything in it.
 slash("")

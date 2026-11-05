@@ -2,7 +2,7 @@
 -- healing, from the game's meter API: every source with its own icon, a stable key, and a
 -- reset point of your own that clears nothing in the game. A build without that API gets the
 -- run's plain meter lines, without icons. Each row is a bar as long as its share of the top
--- row, with its damage per second and its share of the whole. The tabs at the top switch
+-- row, with its sum, its damage per second and its share of the whole. The tabs at the top switch
 -- between them; point at a row for its numbers.
 --
 -- The rows are read at most three times a second, only when the game's counters moved, and a
@@ -105,6 +105,14 @@ end
 -- The rate to show: the recent one while it is ready, else the average.
 local function Rate(stats)
     return Value(stats.displayRate) or Value(stats.periodAverage) or 0
+end
+
+-- A rate written as the game's meter window writes it, so the two read the same side by side.
+local function RateText(v)
+    v = tonumber(v) or 0
+    if v >= 1000000 then return string.format("%.2fm", v / 1000000) end
+    if v >= 1000 then return string.format("%.1fk", v / 1000) end
+    return tostring(math.floor(v + 0.5))
 end
 
 local function DropCheckpoint()
@@ -309,7 +317,7 @@ local function ShowTip()
         for i = 1, math.min(table.getn(snap.rows), 3) do
             local r = snap.rows[i]
             local src = snap.sources and snap.sources[r.sourceKey] or {}
-            GameTooltip:AddDoubleLine(tostring(src.name or "?"), SL.Short(Rate(r)) .. " dps", 1, 0.82, 0, 1, 1, 1)
+            GameTooltip:AddDoubleLine(tostring(src.name or "?"), RateText(Rate(r)) .. " dps", 1, 0.82, 0, 1, 1, 1)
         end
     end
     GameTooltip:Show()
@@ -341,7 +349,7 @@ local function NewRow(i)
     r.fill:SetWidth(1)
     r.name = SL.Text(r, 10)
     r.name:SetPoint("LEFT", r.track, "LEFT", 4, 0)
-    r.name:SetPoint("RIGHT", r.track, "RIGHT", -70, 0)
+    r.name:SetPoint("RIGHT", r.track, "RIGHT", -104, 0)
     r.name:SetJustifyH("LEFT")
     r.value = SL.Text(r, 10, true)
     r.value:SetPoint("RIGHT", r.track, "RIGHT", -4, 0)
@@ -448,7 +456,7 @@ function Rebuild()
         if lines[i].amount > top then top = lines[i].amount end
     end
     if table.getn(lines) > 0 then
-        total:SetText(SL.Short(rate) .. " " .. mode.unit)
+        total:SetText(RateText(rate) .. " " .. mode.unit)
     else
         total:SetText("")
     end
@@ -492,7 +500,7 @@ function Rebuild()
         else
             r.name:SetTextColor(1, 1, 1)
         end
-        r.value:SetText(SL.Short(line.rate) .. "  " .. SharePercent(line.share))
+        r.value:SetText(RateText(line.amount) .. "  " .. RateText(line.rate) .. "  " .. SharePercent(line.share))
         local goal = 0
         if top > 0 then goal = line.amount / top end
         if not r:IsShown() then
@@ -511,7 +519,7 @@ function Rebuild()
         end
         table.insert(r.slTip, { "Share", SharePercent(line.share) })
         if line.top and line.top ~= "" then
-            table.insert(r.slTip, { "Best spell", tostring(line.top) .. ", " .. SL.Short(line.topRate or 0) .. " dps" })
+            table.insert(r.slTip, { "Best spell", tostring(line.top) .. ", " .. RateText(line.topRate or 0) .. " dps" })
         end
         r.slOwner, r.slRun = line.owner, context and context.runId
     end

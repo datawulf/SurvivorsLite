@@ -310,6 +310,61 @@ local function ApplyHud()
     end
 end
 
+-- The stock character and party frames have no HUD setting. Each goes under a parent that never
+-- shows, so the client's own Show calls can't bring it back, and goes home when the option is off.
+local STOCK_FRAMES = {
+    { key = "hideplayer", by = "hero", frames = { "PlayerFrame" } },
+    { key = "hideparty", by = "party", frames = { "PartyMemberFrame1", "PartyMemberFrame2", "PartyMemberFrame3", "PartyMemberFrame4" } },
+}
+local stockHolder = CreateFrame("Frame", "SurvivorsLiteStockHolder", UIParent)
+stockHolder:Hide()
+local parked = {}
+local petMoved = false
+
+-- This client works out a frame's visibility when it shows or hides, not when its parent
+-- changes, so a shown frame goes through both after the move.
+local function Reparent(f, parent)
+    local shown = f:IsShown()
+    f:SetParent(parent)
+    if shown then
+        f:Hide()
+        f:Show()
+    end
+end
+
+local function ApplyStockFrames()
+    local db = SL.db
+    local player = getglobal("PlayerFrame")
+    local pet = getglobal("PetFrame")
+    -- The pet's frame hangs under the character's and nothing here replaces it.
+    local playerHidden = db.hideplayer and db.hero
+    if pet and player then
+        if playerHidden and not petMoved then
+            Reparent(pet, UIParent)
+            petMoved = true
+        elseif not playerHidden and petMoved then
+            petMoved = false
+        end
+    end
+    for i = 1, table.getn(STOCK_FRAMES) do
+        local group = STOCK_FRAMES[i]
+        local hide = db[group.key] and db[group.by]
+        for j = 1, table.getn(group.frames) do
+            local name = group.frames[j]
+            local f = getglobal(name)
+            if f and hide and not parked[name] then
+                Reparent(f, stockHolder)
+                parked[name] = true
+            elseif f and not hide and parked[name] then
+                Reparent(f, UIParent)
+                parked[name] = nil
+            end
+        end
+    end
+    -- Back under the character's frame once that is home.
+    if pet and player and not playerHidden and pet:GetParent() ~= player then Reparent(pet, player) end
+end
+
 -- These settings are saved by the game, so at logout every part goes back: removing the addon
 -- must not leave parts of the HUD hidden, and some have no check box in the game's options.
 local function RestoreHud()
@@ -330,6 +385,28 @@ local function ApplyOverCards()
     end
 end
 
+-- With frames kept on top the client also paints the flat backings of frames that are not, and
+-- it paints them over the cards: the hero bar's showed as a black bar across the middle card.
+-- So the frames that stay under the cards leave while the cards are up.
+local cardsUp = false
+
+local function UpdateUnderCards()
+    local up = SL.db.overcards and type(AZS_GetPhase) == "function" and AZS_GetPhase() == "choosing"
+    up = up and true or false
+    if up == cardsUp then return end
+    cardsUp = up
+    local markers = getglobal("SurvivorsLiteMarkers")
+    if up then
+        SL.under:Hide()
+        if markers then markers:Hide() end
+    else
+        SL.under:Show()
+        if markers then markers:Show() end
+    end
+end
+
+SL.Every(0.1, UpdateUnderCards)
+
 -- ---------------------------------------------------------------- wiring
 
 function M.init()
@@ -348,5 +425,6 @@ end
 
 function M.apply()
     ApplyHud()
+    ApplyStockFrames()
     ApplyOverCards()
 end

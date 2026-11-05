@@ -14,7 +14,7 @@ local COLOR = {
 }
 local ICON = { final = "skull", boss = "skull", guardian = "star", next = "skull", empty = "star" }
 
-local frame = CreateFrame("Frame", "SurvivorsLiteThreats", UIParent)
+local frame = CreateFrame("Frame", "SurvivorsLiteThreats", SL.under)
 frame:SetFrameStrata("LOW")
 frame:SetWidth(ROW_W)
 frame:SetHeight(MAX_ROWS * ROW_H)

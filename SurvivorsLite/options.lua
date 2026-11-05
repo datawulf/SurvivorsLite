@@ -5,7 +5,7 @@
 local SL = SurvivorsLite
 local M = SL.Module({})
 
-local W, H = 714, 624
+local W, H = 714, 656
 local CHECK_UP = "Interface\\Buttons\\UI-CheckBox-Up"
 local CHECK_MARK = "Interface\\Buttons\\UI-CheckBox-Check"
 local THUMB = "Interface\\Buttons\\UI-SliderBar-Button-Horizontal"
@@ -532,6 +532,10 @@ local function Build()
     Check(right, "Hide the game's boss bars", "Hides the game's boss and guardian health bars while this addon's plates or status list show. Back at logout.", get, set)
     get, set = Toggle("hideflag")
     Check(right, "Hide the game's lair flag", "Hides the minimap's red flag on the nearest lair while this addon's lair pins show. Back at logout.", get, set)
+    get, set = Toggle("hideplayer")
+    Check(right, "Hide the game's character frame", "Hides the game's character frame while this addon's hero bar shows. Your pet's frame stays.", get, set)
+    get, set = Toggle("hideparty")
+    Check(right, "Hide the game's party frames", "Hides the game's party frames while this addon's party rows show.", get, set)
 
     -- Bottom row.
     local move = Button(panel, 120, "Move frames", "Drag the hero bar, action bar, party frames, status list, run stats, damage meter and the circles' center (You).", function()

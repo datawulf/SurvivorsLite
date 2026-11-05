@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.11.0" }
+SurvivorsLite = { version = "1.11.1" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
@@ -20,10 +20,10 @@ SL.DEFAULTS = {
     rangeZoom = 23, rangeTilt = 1, ground = true,
     bar = true, barScale = 0.85, barX = 0, barY = 8, jewelry = true,
     lairs = true, chests = true, leashring = true, leashbar = true, leash = 40, mapbutton = true,
-    overcards = true, hidemeter = false, hidebosses = false, hideflag = false,
+    overcards = true, hidemeter = false, hidebosses = true, hideflag = false, hideplayer = true, hideparty = true,
 }
 -- Saved settings older than this get the changed defaults below once.
-SL.SCHEMA = 3
+SL.SCHEMA = 4
 
 SL.WHITE = "Interface\\Buttons\\WHITE8X8"
 SL.BAR = "Interface\\TargetingFrame\\UI-StatusBar"
@@ -522,6 +522,11 @@ SL.center:SetWidth(28)
 SL.center:SetHeight(28)
 SL.center:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 
+-- The parent of every frame that stays under the level-up cards: world.lua hides it while they
+-- are up, and each frame keeps its own shown state for when they go.
+SL.under = CreateFrame("Frame", "SurvivorsLiteUnder", UIParent)
+SL.under:SetAllPoints(UIParent)
+
 -- Positions are offsets from the same point of UIParent: its center, or its bottom for
 -- frames that belong at the screen's edge whatever its size. A frame that follows you is
 -- placed from your feet instead while the game can project them.
@@ -642,6 +647,9 @@ local function Load()
         if db.statsX == -390 then db.statsX = -480 end
         if db.meterX == 390 then db.meterX = 492 end
     end
+    -- 1.11.1: the plate on the unit replaces the game's bar at the top of the screen. 1.11.0
+    -- saved the old default, so this is not left to the default below.
+    if (db.schema or 1) < 4 then db.hidebosses = true end
     db.schema = SL.SCHEMA
     for k, v in pairs(SL.DEFAULTS) do
         if db[k] == nil then db[k] = v end
@@ -663,7 +671,7 @@ SL.On("PLAYER_LOGIN", Load)
 
 local TOGGLE_ORDER = { "hero", "shield", "uptime", "ring", "lowhp", "bar", "jewelry", "cds", "plates", "elites",
     "debuffs", "autoplates", "allies", "party", "downmark", "meter", "threats", "lairs", "chests", "leashring", "leashbar", "alerts",
-    "mapbutton", "range", "range2", "pickup", "area", "ground", "overcards", "hidemeter", "hidebosses", "hideflag" }
+    "mapbutton", "range", "range2", "pickup", "area", "ground", "overcards", "hidemeter", "hidebosses", "hideflag", "hideplayer", "hideparty" }
 local TOGGLES = {
     hero = "hero bar with your health and buffs under your character",
     shield = "your shield on the health bar and its amount",
@@ -697,6 +705,8 @@ local TOGGLES = {
     hidemeter = "hide the game's own damage meter while this addon's shows",
     hidebosses = "hide the game's own boss and guardian bars while this addon's show",
     hideflag = "hide the game's red flag on the minimap while this addon's lair pins show",
+    hideplayer = "hide the game's character frame while this addon's hero bar shows",
+    hideparty = "hide the game's party frames while this addon's party rows show",
 }
 -- Numbers some commands take, with their setting and limits.
 local NUMBERS = {

@@ -13,7 +13,7 @@ local DISPEL = {
 }
 local HARMFUL = { 0.8, 0, 0 }
 
-local hud = CreateFrame("Frame", "SurvivorsLiteHero", UIParent)
+local hud = CreateFrame("Frame", "SurvivorsLiteHero", SL.under)
 hud:SetFrameStrata("LOW")
 hud:SetWidth(W)
 hud:SetHeight(10)
@@ -60,7 +60,7 @@ auraRow:SetHeight(AURA_SIZE)
 auraRow:SetPoint("TOP", xp, "BOTTOM", 0, -4)
 
 -- On the hero: a ring that shows where you stand under trees, warnings above it.
-local ring = CreateFrame("Frame", nil, UIParent)
+local ring = CreateFrame("Frame", nil, SL.under)
 ring:SetFrameStrata("BACKGROUND")
 ring:SetWidth(70)
 ring:SetHeight(70)
@@ -72,7 +72,7 @@ ringTex:SetAllPoints(ring)
 ring:Hide()
 
 -- Warnings stay up when the hero bar is turned off, so they get a frame of their own.
-local over = CreateFrame("Frame", nil, UIParent)
+local over = CreateFrame("Frame", nil, SL.under)
 over:SetFrameStrata("LOW")
 over:SetWidth(W)
 over:SetHeight(1)
@@ -84,7 +84,7 @@ local countdown = SL.Text(over, 15)
 countdown:SetPoint("BOTTOM", alert, "TOP", 0, 4)
 countdown:Hide()
 
-local edge = CreateFrame("Frame", nil, UIParent)
+local edge = CreateFrame("Frame", nil, SL.under)
 edge:SetFrameStrata("BACKGROUND")
 edge:SetAllPoints(UIParent)
 local edgeTex = edge:CreateTexture(nil, "BACKGROUND")

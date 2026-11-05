@@ -12,7 +12,7 @@ local REF_HEIGHT = 768 -- rangeZoom counts screen units per yard on a 768 unit t
 local SPACING = 8
 
 local function NewCircle(r, g, b, a, dot, labelBelow)
-    local c = SL.NewRing(UIParent, r, g, b, a, dot, 24, 120)
+    local c = SL.NewRing(SL.under, r, g, b, a, dot, 24, 120)
     c:SetFrameStrata("BACKGROUND")
     c:SetPoint("CENTER", SL.center, "CENTER", 0, 0)
     c.below = labelBelow
