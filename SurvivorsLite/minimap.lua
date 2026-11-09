@@ -1,6 +1,7 @@
 -- Pins on the minimap: every guardian's lair (its dragon in the lair's color, "!" while
 -- awake, grey while it refills) with a ring at its leash radius, the chests and the party
--- members who are down. Your live position and the run's lair and chest lines share one world
+-- members who are down. An awake guardian's pin follows it while its ring stays at the lair,
+-- and every boss has a skull where it is now. Your live position and the run's lair and chest lines share one world
 -- space on every map, so distances are plain yards.
 --
 -- The leash is how far from its lair you can lead a guardian before it gives up and goes
@@ -22,7 +23,8 @@ local INDOOR = { [0] = 300, 240, 180, 120, 80, 50 }
 local LAIR_SIZE, CHEST_SIZE, DOWN_SIZE = 16, 14, 14
 local RING_SPACING = 5
 
-local lairPins, chestPins, downPins, rings = {}, {}, {}, {}
+local lairPins, chestPins, downPins, bossPins, rings = {}, {}, {}, {}, {}
+local BOSS_SIZE = 18
 local awake = {}     -- lair id -> true while its guardian is awake
 local chase = {}     -- lair id -> { { t, d }, ... } while its guardian chases, not yet counted
 local warned = {}    -- lair id -> true once the leash warning showed for this chase
@@ -279,6 +281,8 @@ local function Update(now)
     if Indoors(zoom) then across = INDOOR end
     local ppy = width / (across[zoom] or across[0])
     local lairs = AZS_LAIRS
+    local units = {}
+    if db.lairs and SL.UnitWhere then units = SL.UnitWhere(now) end
     local n = 0
     if db.lairs and type(lairs) == "table" then
         local leash = SL.LeashRadius()
@@ -301,9 +305,16 @@ local function Update(now)
                     f:SetHeight(size)
                 end
                 local ox, oy = dx * ppy, -dy * ppy
-                Place(f, ox, oy, radius, true)
+                -- An awake guardian's pin goes where it is; its ring stays at the lair.
+                local gx, gy = dx, dy
+                local live = awake[lair.id] and units[lair.id]
+                if live then
+                    local lx, ly = Offset(live)
+                    if lx then gx, gy = lx, ly end
+                end
+                Place(f, gx * ppy, -gy * ppy, radius, true)
                 f.tip = tostring(lair.name or "?")
-                local away = math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
+                local away = math.floor(math.sqrt(gx * gx + gy * gy) + 0.5) .. " yd away"
                 local label = ""
                 if lair.state == "empty" then
                     -- Grey while it refills; the next to come back glows and counts down.
@@ -353,6 +364,22 @@ local function Update(now)
         lairPins[i]:Hide()
         rings[i]:Hide()
     end
+    -- Every boss where it is now, kept on the edge when off the map.
+    local b = 0
+    for _, u in pairs(units) do
+        if u.kind == "boss" or u.kind == "final" then
+            local dx, dy = Offset(u)
+            if dx then
+                b = b + 1
+                local f = bossPins[b] or NewPin(BOSS_SIZE, "skull")
+                bossPins[b] = f
+                f.tip = tostring(u.name or "Boss")
+                f.tip2 = math.floor(math.sqrt(dx * dx + dy * dy) + 0.5) .. " yd away"
+                Place(f, dx * ppy, -dy * ppy, radius, true)
+            end
+        end
+    end
+    for i = b + 1, table.getn(bossPins) do bossPins[i]:Hide() end
     local chests = AZS_CHESTS
     local m = 0
     if db.chests and type(chests) == "table" then
@@ -383,7 +410,7 @@ local function Update(now)
         end
     end
     for i = k + 1, table.getn(downPins) do downPins[i]:Hide() end
-    if n == 0 and m == 0 and k == 0 and not chasing then return false end
+    if n == 0 and m == 0 and k == 0 and b == 0 and not chasing then return false end
 end
 
 ticker = SL.Every(0.1, Update, false)
@@ -453,6 +480,7 @@ function M.apply()
         end
         for i = 1, table.getn(chestPins) do chestPins[i]:Hide() end
         for i = 1, table.getn(downPins) do downPins[i]:Hide() end
+        for i = 1, table.getn(bossPins) do bossPins[i]:Hide() end
         return
     end
     SL.Wake(ticker)

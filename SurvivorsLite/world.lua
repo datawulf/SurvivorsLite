@@ -282,7 +282,7 @@ end
 -- Each part this addon replaces: the part, its setting, and the features that replace it.
 local HUD_PARTS = {
     { part = "meter", key = "hidemeter", by = { "meter" } },
-    { part = "bosses", key = "hidebosses", by = { "threats", "plates" } },
+    { part = "bosses", key = "hidebosses", by = { "plates" } },
     { part = "flag", key = "hideflag", by = { "lairs" } },
 }
 
@@ -298,6 +298,8 @@ local function ApplyHud()
         for j = 1, table.getn(part.by) do
             if db[part.by[j]] then replaced = true end
         end
+        -- Without world anchors there are no bars of ours to replace the game's boss bars.
+        if part.part == "bosses" and not (SL.MarkersOn and SL.MarkersOn()) then replaced = false end
         if db[part.key] and replaced then
             if AZS_IsHudShown(part.part) then
                 AZS_SetHudShown(part.part, false)
@@ -387,11 +389,13 @@ end
 
 -- With frames kept on top the client also paints the flat backings of frames that are not, and
 -- it paints them over the cards: the hero bar's showed as a black bar across the middle card.
--- So the frames that stay under the cards leave while the cards are up.
+-- So the frames that stay under the cards leave while the cards are up. A party's phase can say
+-- choosing for a friend's cards, so it also takes a choice of your own waiting.
 local cardsUp = false
 
 local function UpdateUnderCards()
     local up = SL.db.overcards and type(AZS_GetPhase) == "function" and AZS_GetPhase() == "choosing"
+    if up and AZS_RUN and tonumber(AZS_RUN.owed) == 0 then up = false end
     up = up and true or false
     if up == cardsUp then return end
     cardsUp = up

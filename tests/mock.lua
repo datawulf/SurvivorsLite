@@ -706,15 +706,18 @@ function AZS_GetMeterSnapshot(q)
                 if r.recent then display = recent end
             end
             local row = { rowId = r.key, rank = i, displayAmount = amount, periodAmount = r.amount,
-                periodAverage = { status = "ready", value = r.rate }, recentRate = recent, displayRate = display }
+                periodAverage = { status = "ready", value = r.rate }, recentRate = recent, displayRate = display,
+                nativeProc = r.proc and true or false, procClassification = r.proc and "proc" or "non_proc" }
             if q.groupBy == "owner" then
                 row.ownerId = r.key
                 actors[r.key] = { actorId = r.key, kind = "hero", name = r.name, classKey = r.class }
             else
-                row.sourceKey = r.key
+                -- A source can have a row of its own casts and one of its procs.
+                local source = r.source or r.key
+                row.sourceKey = source
                 local icon = { status = "missing", reason = "none" }
                 if r.icon then icon = { status = "ready", path = r.icon } end
-                sources[r.key] = { sourceKey = r.key, name = r.name, icon = icon, abilityKey = r.ability, kind = "ability" }
+                sources[source] = { sourceKey = source, name = r.name, icon = icon, abilityKey = r.ability, kind = "ability" }
             end
             table.insert(out, row)
         end

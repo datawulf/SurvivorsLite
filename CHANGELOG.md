@@ -3,6 +3,21 @@
 Every version passed the test harness (`tests/run.py`) before release. What has been
 seen working in the real game is listed in [the feature status](README.md#feature-status).
 
+## 1.11.2 - 2026-11-09
+
+- Our boss bars now replace the game's bars at the top. A boss or an awake guardian keeps its
+  bar up there for the whole fight with only its icon over the unit. A sleeping guardian keeps
+  its bar over the unit while it is on screen.
+- Bosses now have a skull on the minimap where they are. An awake guardian's pin follows it and
+  its leash ring stays at the lair.
+- The game's top bars only hide while our plates are on. `/slite plates off` brings them
+  back.
+- Fixed boss bars blinking during fights. A bar now holds its place for a moment when its unit
+  leaves the screen or comes back.
+- Frames under the cards now only hide for your own cards, not a friend's in a party.
+- The damage meter now shows one row per spell like the game's meter. Ranks and pulses are
+  added together and damage cast by a talent or item is a blue proc row of its own.
+
 ## 1.11.1 - 2026-11-05
 
 - Fixed the black bar across the middle level-up card. It was the hero bar's backing.

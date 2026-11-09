@@ -2,7 +2,10 @@
 -- the spots party members fell. The game's world anchors name the exact unit, so there is no
 -- matching by name or health, the client's plate solver does not push them around, and they
 -- show with name plates off. They go over the unit's head at the game's own height and move
--- in the frame handler, in step with the world.
+-- in the frame handler, in step with the world. They also replace the game's bars at the top of
+-- the screen: a boss, or a guardian that is awake, is engaged and has its bar up there, wider,
+-- for the whole fight, with only its icon over the unit. A sleeping guardian keeps its bar over
+-- the unit while it is on screen.
 --
 -- Cost control: the catalog is only read a few times a second and only for these kinds, and
 -- only the few handles it gives are projected each frame. Plain enemies stay on the client's
@@ -20,6 +23,13 @@ local STYLE = {
 }
 local DEBUFF_SIZE, DEBUFF_MAX = 14, 6
 local GAP = 8 -- units between a unit's head and its bar
+local RANK = { final = 1, boss = 2, guardian = 3, elite = 4 } -- the order of the bars at the top
+-- The bars at the top: wider, the first below the run clock's lines, room for a name above each.
+-- A zone's bosses and guardians fit above your character like this. Debuffs go beside the bar.
+local TOP_WIDE, TOP_TALLER, TOP_FIRST, TOP_STEP = 1.7, 3, 92, 30
+-- Seconds a bar stays where it is when its unit leaves the screen or comes back, so a head at the
+-- screen's edge or a frame without an answer does not make it blink or jump.
+local SETTLE = 0.4
 
 -- Every marker lives under one frame on WorldFrame: projected places are in WorldFrame's
 -- units, and the UI scale would pull a child of UIParent off target.
@@ -56,6 +66,14 @@ local function NewPlate()
     local icon = o:CreateTexture(nil, "OVERLAY")
     icon:SetPoint("RIGHT", fill, "LEFT", -4, 0)
     o.edge, o.fill, o.name, o.pct, o.value, o.icon = edge, fill, name, pct, value, icon
+    -- Over an engaged unit only its icon, while its bar is at the top.
+    local mark = CreateFrame("Frame", nil, holder)
+    mark:SetWidth(16)
+    mark:SetHeight(16)
+    mark.tex = mark:CreateTexture(nil, "OVERLAY")
+    mark.tex:SetAllPoints(mark)
+    mark:Hide()
+    o.mark = mark
     o.debuffs = {}
     o:Hide()
     return o
@@ -84,7 +102,11 @@ local function Debuffs(o, row)
             o.debuffs[i] = f
         end
         f:ClearAllPoints()
-        f:SetPoint("TOPLEFT", o.fill, "BOTTOMLEFT", (i - 1) * (DEBUFF_SIZE + 2), -3)
+        if o.atTop then
+            f:SetPoint("LEFT", o.fill, "RIGHT", 4 + (i - 1) * (DEBUFF_SIZE + 2), 0)
+        else
+            f:SetPoint("TOPLEFT", o.fill, "BOTTOMLEFT", (i - 1) * (DEBUFF_SIZE + 2), -3)
+        end
         if f.icon ~= x.icon then
             f.icon = x.icon
             f.tex:SetTexture(SL.Icon(x.icon))
@@ -147,6 +169,7 @@ local function Style(o, kind, unitId, name)
     local s = STYLE[kind]
     o.kind, o.unitId, o.unitName = kind, unitId, name
     o.p, o.v = nil, nil
+    o.atTop, o.lostAt, o.calmAt = nil, nil, nil
     o:SetWidth(s.w)
     o:SetHeight(s.h)
     o.fill:SetWidth(s.w)
@@ -160,10 +183,15 @@ local function Style(o, kind, unitId, name)
         local look = SL.LairLook(lair)
         edge, size = look.color, s.size + 2
         SL.SetLook(o.icon, look)
+        SL.SetLook(o.mark.tex, look)
     else
         SL.SetMark(o.icon, s.icon)
         o.icon:SetVertexColor(1, 1, 1, 1)
+        SL.SetMark(o.mark.tex, s.icon)
+        o.mark.tex:SetVertexColor(1, 1, 1, 1)
     end
+    o.mark:SetWidth(size + 4)
+    o.mark:SetHeight(size + 4)
     o.nameColor = s.edge
     o.edge:SetVertexColor(edge[1], edge[2], edge[3], 1)
     o.icon:SetWidth(size)
@@ -177,6 +205,7 @@ local function Free(id)
     plates[id] = nil
     o.seen = nil
     o:Hide()
+    o.mark:Hide()
     HideDebuffs(o)
     table.insert(pool, o)
 end
@@ -185,9 +214,17 @@ end
 
 local function Rebuild()
     requests, list = {}, {}
-    for id, o in pairs(plates) do
-        table.insert(requests, { anchorId = id, attachment = "overhead" })
-        table.insert(list, o)
+    local ids = {}
+    for id in pairs(plates) do table.insert(ids, id) end
+    -- Most important first, and always the same order: the bars at the top are stacked in it.
+    table.sort(ids, function(a, b)
+        local ra, rb = RANK[plates[a].kind], RANK[plates[b].kind]
+        if ra ~= rb then return ra < rb end
+        return tostring(a) < tostring(b)
+    end)
+    for i = 1, table.getn(ids) do
+        table.insert(requests, { anchorId = ids[i], attachment = "overhead" })
+        table.insert(list, plates[ids[i]])
     end
 end
 
@@ -258,6 +295,32 @@ local function ReadCatalog()
     Rebuild()
 end
 
+-- Where the bosses and guardians are now, by unit id, for the minimap. The catalog's places are
+-- read at most five times a second and only when asked.
+local where, whereAt = {}, nil
+
+function SL.UnitWhere(now)
+    if type(AZS_GetWorldAnchors) ~= "function" then return {} end
+    now = now or GetTime()
+    if whereAt and now - whereAt < 0.2 then return where end
+    whereAt = now
+    local found = {}
+    local cursor, page
+    repeat
+        page = AZS_GetWorldAnchors({ kinds = { "guardian", "boss", "finalBoss" }, states = { "alive" } }, cursor)
+        if not page then return where end
+        for i = 1, table.getn(page.entries) do
+            local e = page.entries[i]
+            if e.unitId ~= nil and e.positionAvailable then
+                found[e.unitId] = { x = e.x, y = e.y, z = e.z, spaceId = e.spaceId, kind = KIND[e.kind], name = e.name }
+            end
+        end
+        cursor = page.nextCursor
+    until not page.hasMore
+    where = found
+    return where
+end
+
 local function Near()
     local near = {}
     for _, o in pairs(plates) do
@@ -291,30 +354,96 @@ end, false)
 
 -- ---------------------------------------------------------------- each frame
 
+-- The bar's size for over the unit or at the top of the screen.
+local function SizeBar(o, atTop)
+    if o.atTop == atTop then return end
+    o.atTop = atTop
+    local s = STYLE[o.kind]
+    local w, h = s.w, s.h
+    if atTop then w, h = math.floor(s.w * TOP_WIDE), s.h + TOP_TALLER end
+    o:SetWidth(w)
+    o:SetHeight(h)
+    o.fill:SetWidth(w)
+    o.fill:SetHeight(h)
+end
+
+-- Engaged: a boss, or a guardian that is awake. Its bar stands in for the game's at the top while
+-- those are hidden.
+local function Engaged(o)
+    if not SL.db.hidebosses then return false end
+    if o.kind == "final" or o.kind == "boss" then return true end
+    local row = byId[o.unitId]
+    return o.kind == "guardian" and row and row.state == 1
+end
+
 local function PlacePlates()
     local n = table.getn(requests)
     if n == 0 or not On() then return end
     local res = AZS_ProjectWorldAnchors(requests)
     if not res then return end
     local dropped = false
+    local slot = 0
+    local now = GetTime()
     for i = 1, n do
         local e, o = res.entries[i], list[i]
-        if e.state == "onScreen" and res.frameCurrent then
-            o:ClearAllPoints()
-            o:SetPoint("CENTER", WorldFrame, "BOTTOMLEFT", e.x, e.y + GAP)
-            o.seen = true
-            o:Show()
-        else
+        local place
+        local onScreen = e.state == "onScreen" and res.frameCurrent
+        if e.state == "expired" or e.state == "worldChanged" or e.state == "unknownAnchor"
+            or e.entityState == "dead" then
             o.seen = nil
             o:Hide()
-            if e.state == "expired" or e.state == "worldChanged" or e.state == "unknownAnchor"
-                or e.entityState == "dead" then
-                Free(e.anchorId)
-                dropped = true
+            Free(e.anchorId)
+            dropped = true
+        else
+            local engaged = Engaged(o)
+            if engaged then
+                o.calmAt = nil
+            elseif o.atTop and o:IsShown() then
+                -- A guardian that just went back to sleep keeps its place a moment.
+                o.calmAt = o.calmAt or now
+                if now - o.calmAt < SETTLE then engaged = true end
+            end
+            if onScreen then
+                o.lostAt = nil
+                o.seen = true
+            else
+                o.lostAt = o.lostAt or now
+                o.seen = nil
+            end
+            if engaged then
+                place = "top"
+            elseif onScreen then
+                place = "unit"
+            elseif not (now - o.lostAt < SETTLE and o:IsShown()) then
+                -- A frame or two without a place keeps the bar where it is.
+                o:Hide()
+            end
+            if engaged and onScreen then
+                o.mark:ClearAllPoints()
+                o.mark:SetPoint("CENTER", WorldFrame, "BOTTOMLEFT", e.x, e.y + GAP)
+                o.mark:Show()
+            elseif not (engaged and o.lostAt and now - o.lostAt < SETTLE) then
+                o.mark:Hide()
             end
         end
+        if place == "unit" then
+            SizeBar(o, false)
+            o:ClearAllPoints()
+            o:SetPoint("CENTER", WorldFrame, "BOTTOMLEFT", e.x, e.y + GAP)
+            o:Show()
+        elseif place == "top" then
+            SizeBar(o, true)
+            o:ClearAllPoints()
+            o:SetPoint("CENTER", WorldFrame, "TOP", 0, -TOP_FIRST - slot * TOP_STEP)
+            slot = slot + 1
+            o:Show()
+        end
     end
-    if dropped then Rebuild() end
+    if dropped then
+        Rebuild()
+        -- If the game still lists that unit it comes back at the next read of the catalog.
+        lastCatalog = nil
+    end
 end
 
 -- ---------------------------------------------------------------- friends who are down
@@ -414,6 +543,10 @@ function M.apply()
         ticker.active = false
         SL.markedNames = {}
         M.sig = nil
+    end
+    for _, o in pairs(plates) do
+        o.atTop = nil
+        o.mark:Hide()
     end
     if not On() then
         for id in pairs(plates) do Free(id) end

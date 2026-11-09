@@ -122,6 +122,31 @@ end
 
 local BAD_CHECKPOINT = { INVALID_CHECKPOINT = true, CHECKPOINT_EXPIRED = true, CHECKPOINT_INVALIDATED = true }
 
+-- One row per spell, as the game's own meter shows it: its ranks and pulses together, and what a
+-- talent or item cast of it on a line of its own, marked as a proc.
+local function Merge(rows)
+    local out, at = {}, {}
+    for i = 1, table.getn(rows) do
+        local r = rows[i]
+        local group = tostring(r.key or r.name)
+        if r.proc then group = group .. "|proc" end
+        local m = at[group]
+        if m then
+            m.amount = m.amount + r.amount
+            m.rate = m.rate + r.rate
+            m.share = m.share + r.share
+            if r.average then m.average = (m.average or 0) + r.average end
+            if r.recent then m.recent = (m.recent or 0) + r.recent end
+            m.icon = m.icon or r.icon
+        else
+            at[group] = r
+            table.insert(out, r)
+        end
+    end
+    table.sort(out, function(a, b) return a.amount > b.amount end)
+    return out
+end
+
 -- A tab's rows from the game: rows, the total's rate; nil and "wait" while the game is still
 -- catching up, nil and "lines" when only its plain lines can answer.
 local function ReadApi(mode)
@@ -155,12 +180,14 @@ local function ReadApi(mode)
         else
             local src = snap.sources and snap.sources[r.sourceKey] or {}
             row.name = src.name
-            -- A new rank is a new key: the ability or talent keeps its color through them.
-            row.key = src.abilityKey or src.talentKey or r.sourceKey
+            -- A new rank is a new key: the ability or talent keeps its row and color through them.
+            row.key = src.abilityKey or src.talentKey or src.itemKey or r.sourceKey
+            row.proc = r.nativeProc == true or r.procClassification == "proc"
             if type(src.icon) == "table" and src.icon.status == "ready" then row.icon = src.icon.path end
         end
         rows[i] = row
     end
+    if mode ~= "party" then rows = Merge(rows) end
     return rows, Rate(snap.totals or {}), snap.context
 end
 
@@ -177,6 +204,7 @@ local function ReadLines(mode)
         local share = 0
         if sum > 0 then share = amount / sum end
         rows[i] = { name = line.name, key = line.name, amount = amount, rate = rate, average = rate, share = share,
+            proc = tonumber(line.proc) == 1,
             class = line.class, mine = mode == "party" and tostring(line.name) == UnitName("player"),
             top = line.top, topRate = tonumber(line.topdps) }
     end
@@ -314,10 +342,23 @@ local function ShowTip()
     -- A hero's best spells, asked for only now.
     local snap = OwnerSpells(this.slOwner, this.slRun)
     if snap then
-        for i = 1, math.min(table.getn(snap.rows), 3) do
+        -- Grouped by spell as in the window, procs on their own blue line.
+        local spells = {}
+        for i = 1, table.getn(snap.rows) do
             local r = snap.rows[i]
             local src = snap.sources and snap.sources[r.sourceKey] or {}
-            GameTooltip:AddDoubleLine(tostring(src.name or "?"), RateText(Rate(r)) .. " dps", 1, 0.82, 0, 1, 1, 1)
+            table.insert(spells, { name = src.name, key = src.abilityKey or src.talentKey or src.itemKey or r.sourceKey,
+                proc = r.nativeProc == true or r.procClassification == "proc",
+                amount = tonumber(r.displayAmount) or 0, rate = Rate(r), share = 0 })
+        end
+        spells = Merge(spells)
+        for i = 1, math.min(table.getn(spells), 3) do
+            local s = spells[i]
+            local g = 0.82
+            if s.proc then g = 0.7 end
+            local red = 1
+            if s.proc then red = 0.45 end
+            GameTooltip:AddDoubleLine(tostring(s.name or "?"), RateText(s.rate) .. " dps", red, g, s.proc and 1 or 0, 1, 1, 1)
         end
     end
     GameTooltip:Show()
@@ -497,6 +538,9 @@ function Rebuild()
         r.name:SetText(name)
         if line.mine then
             r.name:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+        elseif line.proc then
+            -- Blue, as the game's meter shows a talent's or item's own damage.
+            r.name:SetTextColor(0.45, 0.7, 1)
         else
             r.name:SetTextColor(1, 1, 1)
         end
@@ -518,6 +562,7 @@ function Rebuild()
             table.insert(r.slTip, { "Last " .. window .. " s", Whole(line.recent) })
         end
         table.insert(r.slTip, { "Share", SharePercent(line.share) })
+        if line.proc then table.insert(r.slTip, { "Proc", "cast by a talent or item" }) end
         if line.top and line.top ~= "" then
             table.insert(r.slTip, { "Best spell", tostring(line.top) .. ", " .. RateText(line.topRate or 0) .. " dps" })
         end

@@ -3,7 +3,7 @@
 -- Everything is event driven or runs on a few shared, throttled tickers. Nothing walks
 -- the world's frames every frame.
 
-SurvivorsLite = { version = "1.11.1" }
+SurvivorsLite = { version = "1.11.2" }
 local SL = SurvivorsLite
 
 SL.DEFAULTS = {
@@ -703,7 +703,7 @@ local TOGGLES = {
     ground = "circles on the ground and your ring on your feet, projected by the game",
     overcards = "keep the run stats, action bar, jewelry and meter over the level-up cards",
     hidemeter = "hide the game's own damage meter while this addon's shows",
-    hidebosses = "hide the game's own boss and guardian bars while this addon's show",
+    hidebosses = "replace the game's boss and guardian bars at the top with this addon's",
     hideflag = "hide the game's red flag on the minimap while this addon's lair pins show",
     hideplayer = "hide the game's character frame while this addon's hero bar shows",
     hideparty = "hide the game's party frames while this addon's party rows show",

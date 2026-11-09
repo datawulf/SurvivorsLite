@@ -48,8 +48,8 @@ Entertainment.
   Reset counts from now on without touching the game's numbers, and All goes back to the
   whole run. `/slite rows 3-15` sets how many rows show, `/slite window 5-120` makes damage
   per second cover the last seconds.
-- The game's own boss bars are hidden while this addon's plates or status list show. Its
-  meter and lair flag can be hidden too (off by default). All come back at logout. Its
+- This addon's boss bars replace the game's at the top: a boss or an awake guardian has its
+  bar at the top of the screen for the whole fight, a sleeping guardian over the unit. The game's meter and lair flag can be hidden too (off by default). All come back at logout. Its
   character and party frames are hidden while the hero bar and party rows show. The run stats, action bar, jewelry and meter stay
   over the level-up cards.
 - Every guardian's lair has a look of its own, by its place in the run's lair line: a
@@ -123,6 +123,8 @@ Seen working in game (player screenshots and reports):
 - The range circle and skill circles, flat on the screen.
 - Each meter row's sum, rate and share (1.11.1).
 - Hiding the game's character frame and getting it back (1.11.1).
+- Engaged bosses and guardians with their bar at the top for the whole fight (1.11.2).
+- One damage meter row per spell, procs on a blue row of their own (1.11.2).
 
 New in 1.11.0 on the game's official API, not confirmed in game yet:
 
@@ -136,6 +138,7 @@ New in 1.11.0 on the game's official API, not confirmed in game yet:
 - Hiding the game's meter, boss bars and lair flag, and getting them back at logout.
 - "DOWN 34 yd" on party rows, the marker on the spot and the minimap pin.
 - New in 1.11.1: hiding the game's party frames and no black bar on the level-up cards.
+- New in 1.11.2: boss skulls and awake guardian pins moving on the minimap.
 
 Not confirmed in game yet:
 
@@ -261,7 +264,7 @@ leash slider or `/slite leash N` forgets what play taught.
 | `/slite tilt 0.3-1` | flat circle height for a camera that looks in from the side |
 | `/slite overcards on/off` | run stats, action bar, jewelry and meter over the level-up cards |
 | `/slite hidemeter on/off` | hide the game's meter while this addon's shows |
-| `/slite hidebosses on/off` | hide the game's boss bars while this addon's show (on by default) |
+| `/slite hidebosses on/off` | replace the game's boss bars with this addon's (on by default) |
 | `/slite hideflag on/off` | hide the game's lair flag while this addon's pins show |
 | `/slite hideplayer on/off` | hide the game's character frame while the hero bar shows (on by default) |
 | `/slite hideparty on/off` | hide the game's party frames while the party rows show (on by default) |
