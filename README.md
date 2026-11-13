@@ -7,7 +7,7 @@ web build `f3a3d645a1ed` (2026-11-05).
 - Download: [latest release](https://github.com/datawulf/SurvivorsLite/releases/latest)
 - Documentation: [datawulf.github.io/SurvivorsLite](https://datawulf.github.io/SurvivorsLite/)
 - Changes: [CHANGELOG.md](CHANGELOG.md)
-- Support the work: [Ko-fi](https://ko-fi.com/munkrej)
+- Support the work: [Ko-fi](https://ko-fi.com/punkware)
 
 Fan made and not affiliated with the makers of Azeroth Survivors or with Blizzard
 Entertainment.
@@ -362,7 +362,7 @@ python build.py
 ## Support
 
 SurvivorsLite is free. If it helps your runs, you can
-[buy me a coffee on Ko-fi](https://ko-fi.com/munkrej). Bugs and ideas go to the
+[buy me a coffee on Ko-fi](https://ko-fi.com/punkware). Bugs and ideas go to the
 [issues](https://github.com/datawulf/SurvivorsLite/issues).
 
 ## License
